@@ -1,0 +1,138 @@
+# RLC Agent Composition Configuration
+# Composite agents for Runtime LifeCycle operations
+
+version: "1.0"
+
+compositions:
+  incident-response-team:
+    name: "Incident Response Team"
+    description: "Complete incident response capability from detection through post-mortem"
+    base_agent: "incident-commander"
+    includes:
+      - "event-classifier"
+      - "triage-analyst"
+      - "runbook-executor"
+      - "auto-remediator"
+      - "diagnostic-analyst"
+      - "recovery-monitor"
+      - "post-mortem-writer"
+    use_cases:
+      - "Managing SEV0/SEV1 incidents end-to-end"
+      - "Coordinating complex incident responses"
+      - "Executing full incident lifecycle"
+
+  observability-squad:
+    name: "Observability Squad"
+    description: "Comprehensive monitoring, alerting, and anomaly detection"
+    base_agent: "anomaly-detector"
+    includes:
+      - "metrics-collector"
+      - "log-aggregator"
+      - "threshold-evaluator"
+      - "health-checker"
+      - "correlation-engine"
+    use_cases:
+      - "Designing observability strategies"
+      - "Detecting issues before incidents"
+      - "Reducing alert fatigue"
+
+  auto-remediation-team:
+    name: "Auto-Remediation Team"
+    description: "Automated recovery and self-healing capabilities"
+    base_agent: "auto-remediator"
+    includes:
+      - "circuit-breaker"
+      - "graceful-degrader"
+      - "manual-responder"
+      - "rollback-specialist"
+    use_cases:
+      - "Implementing self-healing systems"
+      - "Managing service degradation"
+      - "Executing automated recovery"
+
+  security-response-team:
+    name: "Security Response Team"
+    description: "Security incident detection and response"
+    base_agent: "security-monitor"
+    includes:
+      - "event-classifier"
+      - "incident-commander"
+      - "security-responder"
+      - "escalation-manager"
+    use_cases:
+      - "Handling security incidents"
+      - "Managing security alerts"
+      - "Coordinating breach response"
+
+  sre-team:
+    name: "SRE Team"
+    description: "Full SRE capabilities including reliability, SLOs, and capacity"
+    base_agent: "sre-specialist"
+    includes:
+      - "observability-specialist"
+      - "capacity-planner"
+      - "performance-analyst"
+      - "incident-commander"
+      - "post-mortem-writer"
+    use_cases:
+      - "Managing service reliability"
+      - "Defining and tracking SLOs"
+      - "Capacity planning and forecasting"
+
+  on-call-responder:
+    name: "On-Call Responder"
+    description: "First responder for runtime events"
+    base_agent: "triage-analyst"
+    includes:
+      - "event-classifier"
+      - "runbook-executor"
+      - "alert-router"
+    use_cases:
+      - "On-call incident response"
+      - "Executing standard runbooks"
+      - "Routing events appropriately"
+
+# Auto-include rules for RLC
+rules:
+  auto_include:
+    - when: "incident_declared"
+      include: ["incident-commander", "runbook-executor", "recovery-monitor"]
+
+    - when: "slo_breach_imminent"
+      include: ["sre-specialist", "incident-commander", "escalation-manager"]
+
+    - when: "security_event_detected"
+      include: ["security-monitor", "incident-commander", "escalation-manager"]
+
+    - when: "anomaly_confirmed"
+      include: ["diagnostic-analyst", "threshold-evaluator", "alert-router"]
+
+    - when: "auto_remediation_available"
+      include: ["auto-remediator", "circuit-breaker", "recovery-monitor"]
+
+    - when: "customer_report"
+      include: ["incident-commander", "triage-analyst", "escalation-manager"]
+
+  exclusions:
+    - agents: ["auto-remediator", "manual-responder"]
+      reason: "Choose one or the other based on automation level"
+
+    - agents: ["incident-commander", "post-mortem-writer"]
+      reason: "Post-mortem writer only needed after resolution"
+
+# Usage Instructions
+usage:
+  activation: |
+    To use a composite agent:
+    Example: "I need help from the incident-response-team agent"
+
+  behavior: |
+    Composite agents provide coordinated expertise across multiple
+    runtime domains. They're especially useful for complex incidents
+    requiring diverse capabilities.
+
+  selection: |
+    Choose composite agents when:
+    - The task spans multiple runtime domains
+    - You need coordinated response
+    - Complex scenarios requiring diverse skills

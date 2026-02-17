@@ -1,0 +1,489 @@
+# Agent-to-Agent Communication Protocols for Runtime LifeCycle
+# "Emergency Response" Formation Implementation
+# Adapted from Billy Wright tactical formation for runtime operations
+
+version: "1.0"
+formation_name: "Emergency Response 3-2-3-2"
+
+# Core Communication Channels
+communication_channels:
+
+  incident_response:
+    participants:
+      - incident-commander
+      - runbook-executor
+      - escalation-manager
+    cadence: "Continuous during active incidents"
+    message_format: "INCIDENT: [SEV] | [SERVICE] | Status: [STATE] | Action: [REQUIRED]"
+    escalation_path: [on-call-coordinator, escalation-manager]
+
+  event_correlation:
+    participants:
+      - event-classifier
+      - anomaly-detector
+      - correlation-engine
+    cadence: "Real-time event processing"
+    message_format: "EVENT_CORRELATION: [PATTERN] | Events: [COUNT] | Correlation: [SCORE]"
+    escalation_path: [incident-commander]
+
+  alert_routing:
+    participants:
+      - alert-router
+      - threshold-evaluator
+      - on-call-coordinator
+    cadence: "Immediate on alert generation"
+    message_format: "ALERT: [SEVERITY] | [METRIC] | Value: [CURRENT] | Threshold: [LIMIT]"
+    escalation_path: [incident-commander, escalation-manager]
+
+  auto_remediation:
+    participants:
+      - auto-remediator
+      - circuit-breaker
+      - recovery-monitor
+    cadence: "Automated response loop"
+    message_format: "AUTO_REMEDIATE: [ACTION] | Target: [COMPONENT] | Status: [EXECUTING]"
+    escalation_path: [incident-commander, manual-responder]
+
+  post_incident:
+    participants:
+      - post-mortem-writer
+      - sre-specialist
+      - incident-commander
+    cadence: "Within 5 business days post-incident"
+    message_format: "POST_MORTEM: [INCIDENT] | Status: [DRAFT/FINAL] | Action Items: [COUNT]"
+    escalation_path: [compliance-auditor]
+
+# Agent Roles and Capabilities
+agents:
+
+  # INCIDENT COMMAND - Leadership
+  incident-commander:
+    role: "incident-command"
+    position: "response-leader"
+    primary_function: "Coordinates incident response, delegates tasks, makes decisions"
+    communication_style: "Decisive, clear, timeline-focused"
+
+    receives_from:
+      - all  # Can receive requests from any agent during incident
+
+    passes_to:
+      response_active: [runbook-executor, auto-remediator]
+      escalation_needed: [escalation-manager, on-call-coordinator]
+      resolution_verified: [post-mortem-writer, sre-specialist]
+
+    message_templates:
+      incident_declared: "🚨 INCIDENT_DECLARED: [SEV] | [SERVICE] | IC: [COMMANDER] | Channel: [SLACK]"
+      status_update: "📊 INCIDENT_UPDATE: [INCIDENT_ID] | Status: [STATE] | ETA: [TIME]"
+      resolution_confirmed: "✅ INCIDENT_RESOLVED: [INCIDENT_ID] | Duration: [MINUTES] | Post-mortem assigned"
+
+    decision_criteria:
+      - "Customer impact assessed"
+      - "Response plan activated"
+      - "Stakeholders notified"
+      - "Recovery verified"
+
+  # OBSERVATION DEFENSE - Detection Layer
+  event-classifier:
+    role: "observer"
+    position: "first-responder"
+    primary_function: "Classifies incoming events, assigns severity, routes to specialists"
+    communication_style: "Rapid, categorical, context-aware"
+
+    receives_from:
+      - event-ingestion
+      - metrics-collector
+      - log-aggregator
+
+    passes_to:
+      classified_anomaly: [anomaly-detector, threshold-evaluator]
+      classified_incident: [incident-commander, triage-analyst]
+      classified_routine: [event-archiver]
+
+    message_templates:
+      event_classified: "🔍 EVENT_CLASSIFIED: [EVENT_ID] | Type: [CATEGORY] | Severity: [SEV] | Routed to: [AGENT]"
+      correlation_detected: "🔗 CORRELATION: [PATTERN] | [N] related events | Escalating to [AGENT]"
+
+  triage-analyst:
+    role: "observer"
+    position: "impact-assessor"
+    primary_function: "Assesses incident impact, determines response requirements"
+    communication_style: "Analytical, measured, impact-focused"
+
+    receives_from: [event-classifier, alert-router]
+    passes_to:
+      requires_immediate_response: [incident-commander, runbook-executor]
+      requires_investigation: [anomaly-detector, diagnostic-analyst]
+      routine_handling: [event-archiver]
+
+    message_templates:
+      triage_complete: "📋 TRIAGE_COMPLETE: [EVENT_ID] | Impact: [HIGH/MED/LOW] | Affected: [SERVICES] | Recommended: [ACTION]"
+
+  # SPECIAL MIDFIELD - Analysis and Detection
+  anomaly-detector:
+    role: "midfielder"
+    position: "pattern-analyst"
+    primary_function: "Detects anomalies in metrics, logs, and behaviors"
+    communication_style: "Analytical, data-driven, threshold-aware"
+
+    receives_from: [event-classifier, metrics-collector, log-aggregator]
+    passes_to:
+      anomaly_confirmed: [threshold-evaluator, alert-router]
+      false_positive: [event-archiver]
+      pattern_discovered: [sre-specialist, incident-commander]
+
+    message_templates:
+      anomaly_detected: "📈 ANOMALY_DETECTED: [METRIC] | Current: [VALUE] | Baseline: [VALUE] | Deviation: [SIGMA]"
+
+  threshold-evaluator:
+    role: "midfielder"
+    position: "boundary-guard"
+    primary_function: "Evaluates metrics against SLO thresholds and alert rules"
+    communication_style: "Binary, precise, action-oriented"
+
+    receives_from: [anomaly-detector, metrics-collector]
+    passes_to:
+      threshold_breached: [alert-router, incident-commander]
+      within_tolerance: [metrics-archiver]
+      slo_at_risk: [sre-specialist, alert-router]
+
+    message_templates:
+      threshold_breach: "⚠️ THRESHOLD_BREACH: [SLO] | Current: [VALUE] | Target: [VALUE] | Window: [DURATION]"
+
+  correlation-engine:
+    role: "midfielder"
+    position: "pattern-connector"
+    primary_function: "Correlates related events across services and time windows"
+    communication_style: "Contextual, relational, insight-driven"
+
+    receives_from: [event-classifier, anomaly-detector]
+    passes_to:
+      correlation_found: [incident-commander, diagnostic-analyst]
+      no_correlation: [event-archiver]
+      pattern_emerging: [sre-specialist]
+
+    message_templates:
+      correlation_result: "🔗 CORRELATION: [N] events | Pattern: [DESCRIPTION] | Root cause hint: [HINT]"
+
+  # ALERTING ATTACK - Notification and Routing
+  alert-router:
+    role: "alert-forward"
+    position: "notification-dispatcher"
+    primary_function: "Routes alerts to appropriate responders based on severity and expertise"
+    communication_style: "Urgency-appropriate, context-rich, actionable"
+
+    receives_from: [threshold-evaluator, anomaly-detector, event-classifier]
+    passes_to:
+      critical_alert: [on-call-coordinator, incident-commander]
+      high_alert: [runbook-executor, alert-archiver]
+      warning_alert: [alert-archiver, notification-sender]
+
+    message_templates:
+      alert_routed: "🔔 ALERT_ROUTED: [ALERT_ID] | Severity: [SEV] | Assigned to: [ROLE] | Runbook: [LINK]"
+
+  escalation-manager:
+    role: "alert-forward"
+    position: "response-coordinator"
+    primary_function: "Manages escalation paths when response time targets are missed"
+    communication_style: "Time-sensitive, procedural, authoritative"
+
+    receives_from: [incident-commander, alert-router, on-call-coordinator]
+    passes_to:
+      escalation_triggered: [on-call-coordinator, management-notifier]
+      response_confirmed: [incident-commander]
+
+    message_templates:
+      escalation_alert: "🚨 ESCALATION: [INCIDENT_ID] | Level: [N] | Reason: [TIMEOUT/COMPLEXITY] | Escalated to: [ROLE]"
+
+  on-call-coordinator:
+    role: "alert-forward"
+    position: "responder-dispatcher"
+    primary_function: "Coordinates on-call rotations and ensures responder availability"
+    communication_style: "Schedule-aware, availability-focused, responsive"
+
+    receives_from: [alert-router, escalation-manager]
+    passes_to:
+      responder_assigned: [runbook-executor, incident-commander]
+      no_responders: [escalation-manager, management-notifier]
+
+    message_templates:
+      on_call_assigned: "👤 ON_CALL_ASSIGNED: [INCIDENT_ID] | Responder: [NAME] | Expected response: [TIME]"
+
+  # CONTROL DEFENSE - Automated Response
+  auto-remediator:
+    role: "controller"
+    position: "automation-engine"
+    primary_function: "Executes automated remediation actions based on runbooks"
+    communication_style: "Action-oriented, status-reporting, safety-conscious"
+
+    receives_from: [incident-commander, runbook-executor]
+    passes_to:
+      action_executed: [recovery-monitor, incident-commander]
+      action_failed: [manual-responder, incident-commander]
+      action_blocked: [incident-commander, escalation-manager]
+
+    message_templates:
+      remediation_started: "🔧 REMEDIATION_STARTED: [ACTION] | Target: [COMPONENT] | Safety checks: [PASSED]"
+      remediation_complete: "✅ REMEDIATION_COMPLETE: [ACTION] | Result: [SUCCESS/FAILED] | Recovery: [MONITORING]"
+
+  circuit-breaker:
+    role: "controller"
+    position: "failure-containment"
+    primary_function: "Triggers circuit breakers to prevent cascading failures"
+    communication_style: "Protective, decisive, state-aware"
+
+    receives_from: [auto-remediator, threshold-evaluator]
+    passes_to:
+      breaker_opened: [incident-commander, graceful-degrader]
+      breaker_closed: [recovery-monitor]
+      state_changed: [alert-router]
+
+    message_templates:
+      circuit_opened: "⛔ CIRCUIT_OPEN: [SERVICE] | Reason: [FAILURE_RATE] | Fallback: [ACTIVE]"
+
+  graceful-degrader:
+    role: "controller"
+    position: "functionality-preservation"
+    primary_function: "Implements graceful degradation when systems are under stress"
+    communication_style: "Prioritization-focused, user-experience-aware"
+
+    receives_from: [circuit-breaker, threshold-evaluator]
+    passes_to:
+      degradation_active: [incident-commander, alert-router]
+      service_restored: [recovery-monitor]
+
+    message_templates:
+      degraded: "⚠️ DEGRADATION_ACTIVE: [SERVICE] | Core functions: [PRESERVED] | Non-critical: [DISABLED]"
+
+  manual-responder:
+    role: "controller"
+    position: "human-in-loop"
+    primary_function: "Handles incidents requiring human intervention and judgment"
+    communication_style: "Collaborative, procedural, documentation-focused"
+
+    receives_from: [auto-remediator, incident-commander]
+    passes_to:
+      action_complete: [recovery-monitor, incident-commander]
+      assistance_needed: [incident-commander, escalation-manager]
+
+    message_templates:
+      manual_action: "🖐️ MANUAL_ACTION: [TASK] | Assigned to: [ROLE] | Status: [IN_PROGRESS]"
+
+  # RESPONSE ATTACK - Incident Management
+  runbook-executor:
+    role: "responder"
+    position: "procedure-implementer"
+    primary_function: "Executes runbook procedures for diagnosed incidents"
+    communication_style: "Procedure-following, step-by-step, verification-focused"
+
+    receives_from: [incident-commander, triage-analyst]
+    passes_to:
+      runbook_complete: [recovery-monitor, incident-commander]
+      runbook_failed: [incident-commander, escalation-manager]
+      runbook_update_needed: [post-mortem-writer]
+
+    message_templates:
+      runbook_started: "📖 RUNBOOK_STARTED: [NAME] | Incident: [ID] | Steps: [N]"
+      runbook_complete: "✅ RUNBOOK_COMPLETE: [NAME] | Result: [SUCCESS] | Updated: [YES/NO]"
+
+  diagnostic-analyst:
+    role: "responder"
+    position: "root-cause-investigator"
+    primary_function: "Analyzes system state to determine root causes of incidents"
+    communication_style: "Investigative, evidence-based, hypothesis-driven"
+
+    receives_from: [incident-commander, correlation-engine]
+    passes_to:
+      diagnosis_complete: [runbook-executor, incident-commander]
+      diagnosis_inconclusive: [incident-commander, escalation-manager]
+      root_cause_found: [post-mortem-writer, sre-specialist]
+
+    message_templates:
+      diagnosis_result: "🔬 DIAGNOSIS: [INCIDENT_ID] | Root cause: [DESCRIPTION] | Confidence: [%]"
+
+  recovery-monitor:
+    role: "responder"
+    position: "health-verifier"
+    primary_function: "Monitors system recovery after remediation actions"
+    communication_style: "Metrics-focused, trend-aware, verification-driven"
+
+    receives_from: [auto-remediator, runbook-executor, manual-responder]
+    passes_to:
+      recovery_confirmed: [incident-commander, post-mortem-writer]
+      recovery_stalled: [incident-commander, escalation-manager]
+      regression_detected: [alert-router, incident-commander]
+
+    message_templates:
+      recovery_status: "📈 RECOVERY_MONITOR: [SERVICE] | Metrics: [IMPROVING/STABLE/DEGRADING] | SLO: [COMPLIANT]"
+
+  post-mortem-writer:
+    role: "responder"
+    position: "learning-capturer"
+    primary_function: "Creates blameless post-mortem documents and action items"
+    communication_style: "Learning-focused, systemic, blameless"
+
+    receives_from: [incident-commander, recovery-monitor, diagnostic-analyst]
+    passes_to:
+      postmortem_complete: [sre-specialist, compliance-auditor]
+      action_items_created: [sre-specialist, delivery-coordinator]
+
+    message_templates:
+      postmortem_draft: "📝 POSTMORTEM_DRAFT: [INCIDENT_ID] | Sections: [N] | Action items: [N] | Reviewers: [LIST]"
+      postmortem_final: "✅ POSTMORTEM_FINAL: [INCIDENT_ID] | Published: [LOCATION] | Follow-up: [TRACKED]"
+
+# Workflow Patterns
+workflows:
+
+  incident_response:
+    name: "Standard Incident Response Flow"
+    trigger: "Alert or event detected"
+    sequence:
+      - agent: event-classifier
+        action: "Classify event and assign severity"
+        outputs: ["event_classification", "initial_assessment"]
+
+      - agent: triage-analyst
+        action: "Assess impact and determine response"
+        inputs: ["event_classification"]
+        outputs: ["impact_assessment", "response_requirements"]
+
+      - agent: incident-commander
+        action: "Declare incident and coordinate response"
+        inputs: ["impact_assessment"]
+        outputs: ["incident_declaration", "response_plan"]
+
+      - agent: diagnostic-analyst
+        action: "Investigate and determine root cause"
+        inputs: ["incident_declaration"]
+        outputs: ["root_cause_analysis"]
+
+      - agent: runbook-executor
+        action: "Execute appropriate runbook"
+        inputs: ["root_cause_analysis", "response_plan"]
+        outputs: ["remediation_actions"]
+
+      - agent: auto-remediator
+        action: "Execute automated remediation"
+        inputs: ["remediation_actions"]
+        outputs: ["remediation_results"]
+
+      - agent: recovery-monitor
+        action: "Monitor recovery and verify SLO compliance"
+        inputs: ["remediation_results"]
+        outputs: ["recovery_status"]
+
+      - agent: post-mortem-writer
+        action: "Create blameless post-mortem"
+        inputs: ["root_cause_analysis", "recovery_status", "incident_declaration"]
+        outputs: ["postmortem_document", "action_items"]
+
+  anomaly_detection:
+    name: "Anomaly Detection and Response Flow"
+    trigger: "Metric deviates from baseline"
+    sequence:
+      - agent: anomaly-detector
+        action: "Detect statistical anomaly"
+        outputs: ["anomaly_detection"]
+
+      - agent: threshold-evaluator
+        action: "Evaluate against SLO thresholds"
+        inputs: ["anomaly_detection"]
+        outputs: ["threshold_assessment"]
+
+      - agent: correlation-engine
+        action: "Correlate with other events"
+        inputs: ["anomaly_detection"]
+        outputs: ["correlation_analysis"]
+
+      - agent: alert-router
+        action: "Route alert based on severity"
+        inputs: ["threshold_assessment", "correlation_analysis"]
+        outputs: ["alert_notification"]
+
+      - agent: runbook-executor
+        action: "Execute preventive runbook if applicable"
+        inputs: ["alert_notification"]
+        outputs: ["preventive_actions"]
+
+  auto_remediation:
+    name: "Automated Remediation Flow"
+    trigger: "Known issue pattern detected"
+    sequence:
+      - agent: event-classifier
+        action: "Classify as known issue"
+        outputs: ["issue_classification"]
+
+      - agent: auto-remediator
+        action: "Execute automated remediation"
+        inputs: ["issue_classification"]
+        outputs: ["remediation_execution"]
+
+      - agent: circuit-breaker
+        action: "Open circuit if needed"
+        inputs: ["issue_classification"]
+        outputs: ["circuit_state"]
+
+      - agent: recovery-monitor
+        action: "Verify recovery"
+        inputs: ["remediation_execution"]
+        outputs: ["recovery_verification"]
+
+      - agent: incident-commander
+        action: "Escalate if auto-remediation fails"
+        inputs: ["recovery_verification"]
+        outputs: ["escalation_decision"]
+
+# Communication Protocols
+protocols:
+
+  message_structure:
+    standard_format: "[SENDER] → [RECEIVER]: [MESSAGE_TYPE] | [CONTENT] | Priority: [HIGH/MED/LOW] | Incident: [ID] | Context: [BRIEF]"
+
+  priority_handling:
+    CRITICAL:
+      response_time: "< 2 minutes"
+      escalation: "Automatic if no response"
+      channels: ["pager", "phone", "slack"]
+
+    HIGH:
+      response_time: "< 15 minutes"
+      escalation: "Manual after 30 minutes"
+      channels: ["slack", "sms"]
+
+    MEDIUM:
+      response_time: "< 1 hour"
+      escalation: "Manual after 4 hours"
+      channels: ["slack", "email"]
+
+    LOW:
+      response_time: "< 24 hours"
+      escalation: "Weekly review"
+      channels: ["email"]
+
+  escalation_chains:
+    incident_escalation: [incident-commander, escalation-manager, on-call-coordinator, management]
+    technical_escalation: [runbook-executor, diagnostic-analyst, sre-specialist, escalation-manager]
+    security_escalation: [security-monitor, incident-commander, security-responder, escalation-manager]
+
+  handoff_requirements:
+    mandatory_fields: [incident_id, current_state, actions_taken, next_steps, blockers, context]
+    validation: "Receiving agent must acknowledge understanding"
+
+# Success Metrics
+metrics:
+  incident_response:
+    - "MTTD (Mean Time To Detect)"
+    - "MTTA (Mean Time To Acknowledge)"
+    - "MTTR (Mean Time To Resolve)"
+    - "Incident recurrence rate"
+
+  agent_coordination:
+    - "Agent response time by priority"
+    - "Handoff success rate"
+    - "Escalation accuracy"
+    - "Cross-agent collaboration frequency"
+
+  operational_excellence:
+    - "SLO compliance rate"
+    - "Error budget consumption"
+    - "False positive rate"
+    - "Automation success rate"

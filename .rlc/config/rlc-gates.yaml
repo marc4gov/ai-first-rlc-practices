@@ -1,0 +1,234 @@
+# RLC Gates Configuration
+# Mandatory checkpoints and agent validations for each Runtime LifeCycle phase
+
+gates:
+  detection:
+    description: "Event detection and classification phase"
+    mandatory: true
+    required_agents:
+      - event-classifier
+      - triage-analyst
+    consensus_type: "all"  # All agents must agree on classification
+    documents_required:
+      - "events/detected/<event-id>.json"
+    validation_checks:
+      - event-classified
+      - severity-assigned
+      - initial-impact-known
+    cannot_proceed_without:
+      - agent_sign_off
+      - classification_complete
+    level_overrides:
+      routine:
+        required_agents:
+          - event-classifier
+        consensus_type: "single"
+      critical:
+        required_agents:
+          - event-classifier
+          - triage-analyst
+          - incident-commander
+        consensus_type: "all"
+        escalation_timeout: "2m"
+
+  triage:
+    description: "Incident assessment and response planning phase"
+    mandatory: true
+    required_agents:
+      - incident-commander
+      - runbook-analyst
+      - impact-assessor
+    consensus_type: "majority"  # 2 out of 3 must approve
+    documents_required:
+      - "incidents/<incident-id>/assessment.md"
+      - "incidents/<incident-id>/response-plan.md"
+    validation_checks:
+      - impact-assessed
+      - runbook-identified
+      - responders-assigned
+    cannot_proceed_without:
+      - multi_agent_approval
+      - response_plan_exists
+    level_overrides:
+      routine:
+        required_agents:
+          - incident-commander
+        consensus_type: "single"
+      critical:
+        required_agents:
+          - incident-commander
+          - runbook-analyst
+          - impact-assessor
+          - escalation-manager
+        consensus_type: "all"
+        escalation_timeout: "5m"
+
+  response:
+    description: "Remediation execution and recovery monitoring phase"
+    mandatory: true
+    required_agents:
+      - auto-remediator
+      - manual-responder
+      - recovery-monitor
+    continuous_validation: true
+    validation_interval: "continuous"
+    validation_checks:
+      - action-executed
+      - recovery-monitored
+      - metrics-improving
+    cannot_proceed_without:
+      - action_initiated
+      - monitoring_active
+    level_overrides:
+      routine:
+        required_agents:
+          - auto-remediator
+        validation_checks:
+          - action-completed
+      critical:
+        required_agents:
+          - auto-remediator
+          - manual-responder
+          - recovery-monitor
+          - incident-commander
+        validation_interval: "30s"
+
+  resolution:
+    description: "Incident verification and post-mortem phase"
+    mandatory: true
+    required_agents:
+      - post-mortem-writer
+      - sre-specialist
+      - incident-commander
+    validation_checks:
+      - service-restored
+      - slo-compliance-verified
+      - postmortem-created
+    cannot_proceed_without:
+      - resolution_approval
+      - postmortem_complete
+    level_overrides:
+      routine:
+        required_agents:
+          - incident-commander
+        documents_required:
+          - "incidents/<incident-id>/summary.md"
+      critical:
+        required_agents:
+          - post-mortem-writer
+          - sre-specialist
+          - incident-commander
+          - compliance-auditor
+        documents_required:
+          - "incidents/<incident-id>/postmortem.md"
+          - "incidents/<incident-id>/action-items.md"
+
+# Agent conflict resolution rules
+conflict_resolution:
+  escalation_path:
+    - incident-commander  # First escalation
+    - escalation-manager  # Second escalation
+    - on-call-coordinator  # Final escalation
+
+  resolution_strategies:
+    unanimous_required:
+      gates: ["detection", "triage"]
+      levels: ["critical"]
+
+    majority_vote:
+      gates: ["triage", "resolution"]
+      levels: ["production"]
+
+    single_veto:
+      agents: ["incident-commander", "escalation-manager"]
+      gates: ["response"]
+
+# Mandatory agent sequences for common runtime scenarios
+agent_sequences:
+  incident_response:
+    sequence:
+      - event-classifier
+      - triage-analyst
+      - incident-commander
+      - runbook-executor
+      - recovery-monitor
+      - post-mortem-writer
+    parallel_allowed: false
+
+  metric_anomaly:
+    sequence:
+      - anomaly-detector
+      - threshold-evaluator
+      - alert-router
+    parallel_allowed: true
+
+  auto_remediation:
+    sequence:
+      - event-classifier
+      - auto-remediator
+      - recovery-monitor
+    parallel_allowed: false
+
+  security_incident:
+    sequence:
+      - event-classifier
+      - security-monitor
+      - incident-commander
+      - security-responder
+      - escalation-manager
+    parallel_allowed: false
+
+# SLA/SLO enforcement
+slo_gates:
+  error_budget_burned:
+    threshold: 100
+    action: "feature_freeze"
+    required_agents:
+      - sre-specialist
+      - incident-commander
+
+  slo_breach_imminent:
+    threshold: 90
+    action: "elevated_monitoring"
+    required_agents:
+      - sre-specialist
+      - alert-router
+
+# Incident severity classification
+severity_levels:
+  SEV0:
+    description: "Complete service outage, critical data loss, security breach"
+    response_time: "immediate"
+    required_agents:
+      - incident-commander
+      - escalation-manager
+      - on-call-coordinator
+    escalation_chain:
+      - "5m no response: page backup"
+      - "15m no response: page management"
+      - "30m no response: declare major incident"
+
+  SEV1:
+    description: "Significant service degradation, major feature down"
+    response_time: "< 15 minutes"
+    required_agents:
+      - incident-commander
+      - runbook-executor
+
+  SEV2:
+    description: "Moderate degradation, some users affected"
+    response_time: "< 1 hour"
+    required_agents:
+      - incident-commander
+
+  SEV3:
+    description: "Minor issues, internal impact only"
+    response_time: "< 4 hours"
+    required_agents:
+      - triage-analyst
+
+  SEV4:
+    description: "Cosmetic issues, no functional impact"
+    response_time: "next business day"
+    required_agents:
+      - event-classifier
