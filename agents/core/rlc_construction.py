@@ -73,6 +73,9 @@ class RLCConstructionAgent:
             # Phase 3: Configure agents
             self._configure_agents(results)
 
+            # Phase 3.5: Configure AI models for agents
+            self._configure_agent_models(results)
+
             # Phase 4: Codebase integration (optional)
             if not self.config.skip_code_instrumentation:
                 self._integrate_codebase(results)
@@ -583,6 +586,325 @@ pub fn init_metrics() {
                     "formation": "3-2-3-2",
                     "timeout": "30s"
                 }
+            }
+        }
+
+    def _configure_agent_models(self, results: Dict):
+        """Configure AI models for each agent"""
+        step = "configure_agent_models"
+
+        # Get model configuration template
+        model_config = self._get_tiered_model_config()
+
+        # Write agent model configuration
+        models_file = self.repo_root / ".rlc" / "config" / "agent-models.yaml"
+        self._write_yaml(models_file, model_config)
+        results["artifacts"].append("file:.rlc/config/agent-models.yaml")
+
+        # Create model setup script
+        setup_script = self._generate_model_setup_script(model_config)
+        script_file = self.repo_root / ".rlc" / "scripts" / "setup-models.sh"
+        self._write_script(script_file, setup_script)
+        results["artifacts"].append("file:.rlc/scripts/setup-models.sh")
+
+        # Create MCP configuration
+        mcp_config = self._generate_mcp_config()
+        mcp_file = self.repo_root / ".rlc" / "config" / "mcp-servers.yaml"
+        self._write_yaml(mcp_file, mcp_config)
+        results["artifacts"].append("file:.rlc/config/mcp-servers.yaml")
+
+        self._log_step(step, "Configured AI models and MCP servers", results)
+
+    def _get_tiered_model_config(self) -> Dict:
+        """Get model configuration based on selected tier"""
+        tier = self.selected_tier
+
+        base_config = {
+            "model_backend": {
+                "provider": "ollama",
+                "base_url": "http://localhost:11434",
+                "default_temperature": 0.3,
+                "default_max_tokens": 2048
+            },
+            "communication": {
+                "high_volume": {
+                    "protocol": "kafka",
+                    "config": {"bootstrap_servers": "localhost:9092"}
+                },
+                "coordination": {
+                    "protocol": "nats",
+                    "config": {"url": "nats://localhost:4222"}
+                },
+                "orchestration": {
+                    "lead_agent": "incident_commander",
+                    "heartbeat_interval": "30s"
+                }
+            }
+        }
+
+        if tier == "budget":
+            # All 3B models, ~8GB VRAM
+            base_config["tier_recommendations"] = {
+                "name": "budget",
+                "total_vram_required": "8GB",
+                "total_ram_required": "16GB"
+            }
+            base_config["agents"] = self._get_budget_models()
+
+        elif tier == "balanced":
+            # Core: 7B, Observers: 3B, ~16GB VRAM
+            base_config["tier_recommendations"] = {
+                "name": "balanced",
+                "total_vram_required": "16GB",
+                "total_ram_required": "32GB"
+            }
+            base_config["agents"] = self._get_balanced_models()
+
+        else:  # premium
+            # Core: 14B, Observers: 7B, ~32GB VRAM
+            base_config["tier_recommendations"] = {
+                "name": "premium",
+                "total_vram_required": "32GB",
+                "total_ram_required": "64GB"
+            }
+            base_config["agents"] = self._get_premium_models()
+
+        return base_config
+
+    def _get_budget_models(self) -> Dict:
+        """Budget model configurations (3B models)"""
+        return {
+            "incident_commander": {
+                "model": {"primary": "llama3.2:3b-instruct-q4_k_m", "temperature": 0.3},
+                "mcp_servers": ["filesystem", "postgres", "prompt"]
+            },
+            "auto_remediator": {
+                "model": {"primary": "phi3.5:3.8b-instruct-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["kubernetes", "fetch", "sqlite"]
+            },
+            "post_mortem_writer": {
+                "model": {"primary": "phi3.5:3.8b-instruct-q4_k_m", "temperature": 0.7},
+                "mcp_servers": ["filesystem", "postgres", "prompt"]
+            },
+            "metrics_collector": {
+                "model": {"primary": "phi3.5:3.8b-instruct-q4_k_m", "temperature": 0.1},
+                "mcp_servers": ["postgres"]
+            },
+            "log_aggregator": {
+                "model": {"primary": "phi3.5:3.8b-instruct-q4_k_m", "temperature": 0.3},
+                "embedding_model": "bge-base-en-v1.5",
+                "mcp_servers": ["postgres", "filesystem"]
+            },
+            "health_checker": {"model": None, "checks": ["http", "tcp"]},
+            "anomaly_detector": {
+                "model": {"primary": "llama3.2:3b-instruct-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["postgres"]
+            },
+            "alert_router": {
+                "model": {"primary": "phi3.5:3.8b-instruct-q4_k_m", "temperature": 0.1},
+                "mcp_servers": []
+            },
+            "runbook_executor": {
+                "model": {"primary": "llama3.2:3b-instruct-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["kubernetes", "fetch"]
+            },
+            "recovery_monitor": {
+                "model": {"primary": "llama3.2:3b-instruct-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["postgres"]
+            }
+        }
+
+    def _get_balanced_models(self) -> Dict:
+        """Balanced model configurations (Core: 7B, Others: 3B)"""
+        return {
+            "incident_commander": {
+                "model": {"primary": "mistral:7b-instruct-v0.3-q4_k_m", "temperature": 0.3},
+                "mcp_servers": ["filesystem", "postgres", "prompt"]
+            },
+            "auto_remediator": {
+                "model": {"primary": "phi3.5:3.8b-instruct-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["kubernetes", "fetch", "sqlite"]
+            },
+            "post_mortem_writer": {
+                "model": {"primary": "qwen2.5:7b-instruct-q4_k_m", "temperature": 0.7},
+                "mcp_servers": ["filesystem", "postgres", "prompt"]
+            },
+            "metrics_collector": {
+                "model": {"primary": "phi3.5:3.8b-instruct-q4_k_m", "temperature": 0.1},
+                "mcp_servers": ["postgres"]
+            },
+            "log_aggregator": {
+                "model": {"primary": "phi3.5:3.8b-instruct-q4_k_m", "temperature": 0.3},
+                "embedding_model": "bge-base-en-v1.5",
+                "mcp_servers": ["postgres", "filesystem"]
+            },
+            "health_checker": {"model": None, "checks": ["http", "tcp"]},
+            "anomaly_detector": {
+                "model": {"primary": "llama3.2:3b-instruct-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["postgres"]
+            },
+            "alert_router": {
+                "model": {"primary": "phi3.5:3.8b-instruct-q4_k_m", "temperature": 0.1},
+                "mcp_servers": []
+            },
+            "runbook_executor": {
+                "model": {"primary": "mistral:7b-instruct-v0.3-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["kubernetes", "fetch"]
+            },
+            "recovery_monitor": {
+                "model": {"primary": "llama3.2:3b-instruct-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["postgres"]
+            }
+        }
+
+    def _get_premium_models(self) -> Dict:
+        """Premium model configurations (Core: 14B, Others: 7B)"""
+        return {
+            "incident_commander": {
+                "model": {"primary": "qwen2.5:14b-instruct-q4_k_m", "temperature": 0.3},
+                "mcp_servers": ["filesystem", "postgres", "prompt"]
+            },
+            "auto_remediator": {
+                "model": {"primary": "mistral:7b-instruct-v0.3-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["kubernetes", "fetch", "sqlite"]
+            },
+            "post_mortem_writer": {
+                "model": {"primary": "mixtral:8x7b-instruct-q4_k_m", "temperature": 0.7},
+                "mcp_servers": ["filesystem", "postgres", "prompt"]
+            },
+            "metrics_collector": {
+                "model": {"primary": "llama3.2:3b-instruct-q4_k_m", "temperature": 0.1},
+                "mcp_servers": ["postgres"]
+            },
+            "log_aggregator": {
+                "model": {"primary": "llama3.2:3b-instruct-q4_k_m", "temperature": 0.3},
+                "embedding_model": "bge-base-en-v1.5",
+                "mcp_servers": ["postgres", "filesystem"]
+            },
+            "health_checker": {"model": None, "checks": ["http", "tcp"]},
+            "anomaly_detector": {
+                "model": {"primary": "mistral:7b-instruct-v0.3-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["postgres"]
+            },
+            "alert_router": {
+                "model": {"primary": "llama3.2:3b-instruct-q4_k_m", "temperature": 0.1},
+                "mcp_servers": []
+            },
+            "runbook_executor": {
+                "model": {"primary": "qwen2.5:14b-instruct-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["kubernetes", "fetch"]
+            },
+            "recovery_monitor": {
+                "model": {"primary": "llama3.2:3b-instruct-q4_k_m", "temperature": 0.2},
+                "mcp_servers": ["postgres"]
+            }
+        }
+
+    def _generate_model_setup_script(self, config: Dict) -> str:
+        """Generate script to download and setup models"""
+        models = set()
+        for agent_cfg in config.get("agents", {}).values():
+            if agent_cfg.get("model"):
+                models.add(agent_cfg["model"]["primary"])
+
+        ollama_commands = [f"ollama pull {model}" for model in models]
+
+        script = f"""#!/bin/bash
+# RLC Model Setup Script
+# This downloads the required models for your RLC agent tier
+
+echo "🤖 Setting up RLC Agent Models..."
+echo ""
+
+# Check if Ollama is installed
+if ! command -v ollama &> /dev/null; then
+    echo "❌ Ollama not found. Installing..."
+    curl -fsSL https://ollama.com/install.sh | sh
+fi
+
+echo "✅ Ollama installed"
+echo ""
+echo "📥 Downloading models for {config['tier_recommendations']['name'].upper()} tier..."
+echo ""
+
+"""
+        for cmd in ollama_commands:
+            script += f"{cmd}\n"
+
+        script += f"""
+echo ""
+echo "✅ Model setup complete!"
+echo ""
+echo "Models downloaded:"
+"""
+        for model in models:
+            script += f"  - {model}\n"
+
+        script += f"""
+echo ""
+echo "Resource requirements for this tier:"
+echo "  VRAM: {config['tier_recommendations']['total_vram_required']}"
+echo "  RAM: {config['tier_recommendations']['total_ram_required']}"
+echo ""
+echo "To start Ollama server:"
+echo "  ollama serve"
+echo ""
+echo "To test a model:"
+echo "  ollama run {list(models)[0] if models else 'llama3.2:3b'}"
+"""
+        return script
+
+    def _generate_mcp_config(self) -> Dict:
+        """Generate MCP server configuration"""
+        return {
+            "mcp_servers": {
+                "filesystem": {
+                    "enabled": True,
+                    "config": {
+                        "allowed_paths": ["/var/rlc", "/var/log"],
+                        "read_only_default": True
+                    }
+                },
+                "postgres": {
+                    "enabled": True,
+                    "config": {
+                        "connection_string": "${DATABASE_URL}",
+                        "max_connections": 10
+                    }
+                },
+                "kubernetes": {
+                    "enabled": True,
+                    "config": {
+                        "kubeconfig": "~/.kube/config",
+                        "allowed_operations": [
+                            "get_pods", "get_deployments", "restart_pod",
+                            "scale_deployment", "get_logs"
+                        ]
+                    }
+                },
+                "fetch": {
+                    "enabled": True,
+                    "config": {
+                        "timeout": 10,
+                        "allowed_domains": ["*.internal", "api.monitoring.com"]
+                    }
+                },
+                "sqlite": {
+                    "enabled": True,
+                    "config": {
+                        "database_path": "/var/rlc/state/rlc.db"
+                    }
+                },
+                "prompt": {
+                    "enabled": True,
+                    "config": {
+                        "templates_path": "/etc/rlc/prompts"
+                    }
+                }
+            },
+            "bridge": {
+                "type": "nats",
+                "url": "nats://localhost:4222"
             }
         }
 
