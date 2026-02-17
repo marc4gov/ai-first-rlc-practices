@@ -105,6 +105,7 @@ class RepositoryAnalysis:
     has_docker: bool
     has_helm: bool
     has_terraform: bool
+    all_files: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -132,6 +133,11 @@ class EventHandlingPrescription:
     primary: EventHandlingOption  # Recommended option
     options: List[EventHandlingOption]  # All available options
     selected_tier: str = "balanced"  # Default selection
+    # Opinionated recommendation metadata
+    recommendation_reasons: List[str] = field(default_factory=list)
+    observability_advice: List[str] = field(default_factory=list)
+    agent_focus: List[str] = field(default_factory=list)
+    maturity_level: str = "unknown"
 
 
 @dataclass
@@ -829,6 +835,7 @@ class RepositoryAnalyzer:
             has_docker=self._has_file(all_files, "Dockerfile"),
             has_helm=self._has_file(all_files, "Chart.yaml"),
             has_terraform=self._has_any_extension(all_files, ".tf"),
+            all_files=all_files
         )
 
     def _get_all_files(self) -> List[str]:
@@ -1113,6 +1120,257 @@ class RepositoryAnalyzer:
         return any(f.endswith(ext) for f in files)
 
 
+class EventHandlingRecommender:
+    """Opinionated event handling recommender based on codebase analysis"""
+
+    # Observability maturity levels
+    MATURITY_BOOTSTRAP = "bootstrap"  # Starting out, minimal setup
+    MATURITY_GROWTH = "growth"        # Growing, need more insights
+    MATURITY_PRODUCTION = "production"  # Production-ready, need reliability
+    MATURITY_ENTERPRISE = "enterprise"  # Enterprise-scale, need compliance
+
+    def __init__(self):
+        self.recommendation_reasons = []
+
+    def analyze_maturity(self, analysis: RepositoryAnalysis) -> str:
+        """Determine observability maturity based on codebase characteristics"""
+        signals = {
+            "has_dockerfile": False,
+            "has_k8s": False,
+            "has_ci": False,
+            "has_tests": False,
+            "has_existing_observability": False,
+            "is_monorepo": False,
+            "frameworks": set(),
+            "languages": set(),
+        }
+
+        # Analyze files
+        for file in analysis.all_files:
+            if file == "Dockerfile" or file.endswith("/Dockerfile"):
+                signals["has_dockerfile"] = True
+            if "k8s" in file or "kubernetes" in file:
+                signals["has_k8s"] = True
+            if file.endswith(".yaml") or file.endswith(".yml"):
+                content = self._read_file_if_exists(analysis.path, file)
+                if content and ("deployment" in content.lower() or "service" in content.lower()):
+                    if "k8s" in file or "kubernetes" in file:
+                        signals["has_k8s"] = True
+
+            # Check for CI/CD
+            if file in [".github/workflows", ".gitlab-ci.yml", "Jenkinsfile", "cloudbuild.yaml"]:
+                signals["has_ci"] = True
+
+            # Check for existing observability
+            if any(x in file for x in ["prometheus", "datadog", "grafana", "loki", "tempo"]):
+                signals["has_existing_observability"] = True
+
+        # Check for tests
+        for file in analysis.all_files:
+            if "test" in file.lower():
+                signals["has_tests"] = True
+                break
+
+        signals["frameworks"] = set(analysis.frameworks) if analysis.frameworks else set()
+        signals["languages"] = {l.value for l in analysis.languages} if analysis.languages else set()
+
+        # Determine maturity
+        score = 0
+        if signals["has_dockerfile"]:
+            score += 1
+        if signals["has_k8s"]:
+            score += 2
+        if signals["has_ci"]:
+            score += 1
+        if signals["has_tests"]:
+            score += 1
+        if signals["has_existing_observability"]:
+            score += 2
+        if len(signals["languages"]) > 1:
+            score += 1
+        if any(f in signals["frameworks"] for f in ["django", "rails", "spring", "fastapi"]):
+            score += 1  # Mature web frameworks
+
+        if score >= 7:
+            return self.MATURITY_ENTERPRISE
+        elif score >= 5:
+            return self.MATURITY_PRODUCTION
+        elif score >= 3:
+            return self.MATURITY_GROWTH
+        else:
+            return self.MATURITY_BOOTSTRAP
+
+    def recommend_tier(self, analysis: RepositoryAnalysis, provider: CloudProvider, platform: ComputePlatform) -> str:
+        """Recommend which tier (budget/balanced/premium) to use"""
+        maturity = self.analyze_maturity(analysis)
+        reasons = []
+
+        # Base recommendation on maturity
+        if maturity == self.MATURITY_BOOTSTRAP:
+            # Start simple, but not too cheap (need basics)
+            recommendation = "budget"
+            reasons.append("Early-stage project: start with self-hosted open source")
+        elif maturity == self.MATURITY_GROWTH:
+            # Growing - balance cost and capability
+            recommendation = "balanced"
+            reasons.append("Growing project: managed services reduce operational overhead")
+        elif maturity == self.MATURITY_PRODUCTION:
+            # Production needs reliability
+            recommendation = "balanced"
+            reasons.append("Production workload: managed observability for reliability")
+        else:  # ENTERPRISE
+            # Enterprise might need premium features
+            recommendation = "premium"
+            reasons.append("Enterprise scale: premium features for compliance and support")
+
+        # Adjust based on provider characteristics
+        if provider in [CloudProvider.HETZNER, CloudProvider.OVHCLOUD, CloudProvider.EXOSCALE]:
+            # European budget providers - even balanced is great value
+            if maturity in [self.MATURITY_BOOTSTRAP, self.MATURITY_GROWTH]:
+                recommendation = "budget"
+                reasons.append(f"{provider.value.replace('_', ' ').title()} offers excellent value for self-hosted")
+
+        # Adjust based on platform
+        if platform in [ComputePlatform.PAAS_HEROKU, ComputePlatform.PAAS_VERCEL, ComputePlatform.PAAS_NETLIFY]:
+            # PaaS is already managed - might as well use balanced observability
+            recommendation = "balanced"
+            reasons.append("PaaS platform pairs well with managed observability")
+
+        self.recommendation_reasons = reasons
+        return recommendation
+
+    def get_observability_advice(self, analysis: RepositoryAnalysis, provider: CloudProvider, platform: ComputePlatform) -> List[str]:
+        """Get specific observability advice based on codebase"""
+        advice = []
+        maturity = self.analyze_maturity(analysis)
+
+        # Language-specific advice
+        languages = {l.value for l in analysis.languages} if analysis.languages else set()
+        frameworks = set(analysis.frameworks) if analysis.frameworks else set()
+
+        if "python" in languages:
+            advice.extend([
+                "Use OpenTelemetry Python SDK for auto-instrumentation",
+                "Consider structlog for structured logging (Python best practice)",
+                "Prometheus client for metrics: prometheus_flask_exporter or prometheus-fastapi-instrumentator"
+            ])
+
+        if "javascript" in languages or "typescript" in languages:
+            advice.extend([
+                "Use OpenTelemetry JS SDK with @opentelemetry/auto-instrumentations",
+                "For Next.js (Vercel): use Vercel Analytics + OpenTelemetry",
+                "Winston or Pino for structured logging (Node.js)"
+            ])
+
+        if "go" in languages:
+            advice.extend([
+                "Use OpenTelemetry Go with native instrumentation",
+                "Consider go-kit for observability-friendly microservices",
+                "Prometheus client_golang for metrics"
+            ])
+
+        # Framework-specific advice
+        if "django" in frameworks:
+            advice.append("Django: django-prometheus for /metrics endpoint")
+
+        if "fastapi" in frameworks:
+            advice.append("FastAPI: fastapi-opentelemetry middleware")
+
+        if "next" in frameworks:
+            advice.append("Next.js: Built-in instrumentation via Vercel Analytics")
+
+        # Platform-specific advice
+        if platform in [ComputePlatform.KUBERNETES, ComputePlatform.KUBERNETES_EKS,
+                        ComputePlatform.KUBERNETES_GKE, ComputePlatform.KUBERNETES_AKS]:
+            advice.extend([
+                "Deploy kube-prometheus-stack for cluster-wide observability",
+                "Use Prometheus Operator for CRD-based configuration",
+                "Enable Kubernetes labels for pod-level metrics"
+            ])
+
+        if platform in [ComputePlatform.SERVERLESS_LAMBDA, ComputePlatform.SERVERLESS_CLOUD_RUN]:
+            advice.extend([
+                "Focus on cold start metrics and duration tracking",
+                "Use asynchronous logging to avoid latency impact",
+                "Implement custom business metrics (platform metrics are limited)"
+            ])
+
+        if platform in [ComputePlatform.PAAS_HEROKU, ComputePlatform.PAAS_VERCEL]:
+            advice.extend([
+                "Use log drains for centralized logging",
+                "Platform metrics are limited - add custom business metrics",
+                "Enable platform-specific analytics (Heroku Add-ons, Vercel Analytics)"
+            ])
+
+        # Provider-specific advice
+        if provider in [CloudProvider.AWS, CloudProvider.GCP, CloudProvider.AZURE]:
+            advice.append(f"Consider native {provider.value.upper()} services for lower latency")
+
+        if provider in [CloudProvider.SCALEWAY, CloudProvider.HETZNER, CloudProvider.OVHCLOUD]:
+            advice.append("European providers: consider Grafana Cloud EU for data residency")
+
+        # Maturity-based advice
+        if maturity == self.MATURITY_BOOTSTRAP:
+            advice.append("Start with RED method (Rate, Errors, Duration) for key endpoints")
+
+        if maturity >= self.MATURITY_PRODUCTION:
+            advice.extend([
+                "Implement SLO/SLI tracking with error budgets",
+                "Set up synthetic monitoring for uptime",
+                "Consider distributed tracing for microservices"
+            ])
+
+        return advice
+
+    def recommend_agent_focus(self, analysis: RepositoryAnalysis) -> List[str]:
+        """Recommend which RLC agents to prioritize"""
+        maturity = self.analyze_maturity(analysis)
+        focus = []
+
+        # Base agents always needed
+        focus.extend(["incident-commander", "metrics-collector", "health-checker"])
+
+        if maturity == self.MATURITY_BOOTSTRAP:
+            focus.extend([
+                "alert-router",  # Need basic alerting
+                "threshold-evaluator"  # Simple thresholds work
+            ])
+
+        if maturity >= self.MATURITY_GROWTH:
+            focus.extend([
+                "anomaly-detector",  # More sophisticated detection
+                "log-aggregator",  # Centralized logging
+                "auto-remediator"  # Some automation
+            ])
+
+        if maturity >= self.MATURITY_PRODUCTION:
+            focus.extend([
+                "post-mortem-writer",  # Incident documentation
+                "runbook-executor",  # Automated recovery
+                "recovery-monitor"  # Verify fixes
+            ])
+
+        if maturity == self.MATURITY_ENTERPRISE:
+            focus.extend([
+                "sre-specialist",  # SRE practices
+                "cost-optimizer",  # Cost management
+                "capacity-planner"  # Scale planning
+            ])
+
+        return list(set(focus))
+
+    def _read_file_if_exists(self, repo_path: str, file_path: str) -> Optional[str]:
+        """Safely read a file if it exists"""
+        try:
+            full_path = os.path.join(repo_path, file_path)
+            if os.path.exists(full_path):
+                with open(full_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+        except Exception:
+            pass
+        return None
+
+
 class EventHandlingPrescriber:
     """Prescribes event handling based on environment with price-quality tiers"""
 
@@ -1163,19 +1421,43 @@ class EventHandlingPrescriber:
         }
 
     def prescribe(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
-        """Generate tiered prescription based on analysis"""
+        """Generate tiered prescription based on analysis with opinionated recommendations"""
         key = (analysis.cloud_provider, analysis.compute_platform)
         tiered_generator = self.prescriptions.get(key, self._generic_tiered)
         options = tiered_generator(analysis)
 
-        # Default to balanced tier as primary
-        primary = next((o for o in options if o.tier == "balanced"), options[0] if options else None)
+        # Use recommender to determine best tier
+        recommender = EventHandlingRecommender()
+        recommended_tier = recommender.recommend_tier(
+            analysis, analysis.cloud_provider, analysis.compute_platform
+        )
 
-        return EventHandlingPrescription(
+        # Set primary to recommended tier
+        primary = next(
+            (o for o in options if o.tier == recommended_tier),
+            next((o for o in options if o.tier == "balanced"), options[0] if options else None)
+        )
+
+        # Store recommendation reasons for display
+        recommendation_reasons = recommender.recommendation_reasons[:]
+        observability_advice = recommender.get_observability_advice(
+            analysis, analysis.cloud_provider, analysis.compute_platform
+        )
+        agent_focus = recommender.recommend_agent_focus(analysis)
+
+        prescription = EventHandlingPrescription(
             primary=primary,
             options=options,
-            selected_tier="balanced"
+            selected_tier=recommended_tier
         )
+
+        # Attach recommendation metadata
+        prescription.recommendation_reasons = recommendation_reasons
+        prescription.observability_advice = observability_advice
+        prescription.agent_focus = agent_focus
+        prescription.maturity_level = recommender.analyze_maturity(analysis)
+
+        return prescription
 
     # ========== Tiered Option Creators ==========
 
@@ -3504,18 +3786,20 @@ def main():
         print(f"  python tools/wizard/rlc-setup-wizard.py {args.repo_path} --cloud {selected_provider.value} --platform {selected_platform.value}")
         return
 
-    if is_hosting_unclear and not args.non_interactive:
-        if args.interactive or not (args.cloud or args.platform):
-            # Auto-enter interactive mode if hosting is unclear
-            if not args.interactive:
-                print("ℹ️  Hosting configuration unclear. Entering interactive mode.")
-                print("   Use --non-interactive to skip and use generic recommendations.")
-                print()
+    # Skip interactive mode for list/show-tier commands
+    if not (args.list_options or args.show_tier):
+        if is_hosting_unclear and not args.non_interactive:
+            if args.interactive or not (args.cloud or args.platform):
+                # Auto-enter interactive mode if hosting is unclear
+                if not args.interactive:
+                    print("ℹ️  Hosting configuration unclear. Entering interactive mode.")
+                    print("   Use --non-interactive to skip and use generic recommendations.")
+                    print()
 
-            explorer = HostingExplorer()
-            selected_provider, selected_platform = explorer.explore_interactive(analysis)
-            analysis.cloud_provider = selected_provider
-            analysis.compute_platform = selected_platform
+                explorer = HostingExplorer()
+                selected_provider, selected_platform = explorer.explore_interactive(analysis)
+                analysis.cloud_provider = selected_provider
+                analysis.compute_platform = selected_platform
 
     # Display analysis
     print("Repository Analysis:")
@@ -3530,9 +3814,13 @@ def main():
     event_prescriber = EventHandlingPrescriber()
     event_rx = event_prescriber.prescribe(analysis)
 
-    # Override tier if specified
-    event_rx.selected_tier = args.tier
-    primary = next((o for o in event_rx.options if o.tier == args.tier), event_rx.options[0])
+    # Use the opinionated recommendation as default, unless user explicitly specified a tier
+    # The args.tier default is "balanced" - only use it if recommendation wasn't set
+    if args.tier != "balanced" or not event_rx.selected_tier:
+        event_rx.selected_tier = args.tier
+    # Keep the opinionated recommendation from the prescriber
+
+    primary = next((o for o in event_rx.options if o.tier == event_rx.selected_tier), event_rx.options[0])
     event_rx.primary = primary
 
     # Show options if requested
@@ -3547,9 +3835,17 @@ def main():
         print("=" * 70)
         print()
 
+        # Show recommendation if available
+        if event_rx.recommendation_reasons:
+            print(f"💡 Recommended for your codebase: {event_rx.maturity_level.upper()} maturity")
+            print(f"   Reason: {event_rx.recommendation_reasons[0]}")
+            print()
+
         for i, opt in enumerate(options, 1):
-            badge = "⭐ DEFAULT" if opt.tier == args.tier else ""
-            print(f"{i}. {opt.name} ({opt.tier.upper()}) {badge}")
+            recommended_badge = " ✅ RECOMMENDED" if opt.tier == event_rx.selected_tier else ""
+            default_badge = "⭐ DEFAULT" if opt.tier == args.tier else ""
+            badge = recommended_badge or default_badge
+            print(f"{i}. {opt.name} ({opt.tier.upper()}){badge}")
             print(f"   Cost: {opt.estimated_monthly_cost} | Complexity: {opt.setup_complexity}")
             print(f"   Metrics: {opt.metrics_source}")
             print(f"   Logs: {opt.log_source}")
@@ -3580,6 +3876,47 @@ def main():
     # Generate artifacts
     generator = SetupArtifactGenerator()
     artifacts = generator.generate(analysis, event_rx, team_rx, args.output)
+
+    # Display opinionated recommendations
+    if event_rx.recommendation_reasons:
+        print("=" * 70)
+        print("💡 OPINIONATED RECOMMENDATIONS")
+        print("=" * 70)
+        print()
+        print(f"Observability Maturity: {event_rx.maturity_level.upper()}")
+        print()
+
+        if event_rx.recommendation_reasons:
+            print("Why this tier was recommended:")
+            for reason in event_rx.recommendation_reasons:
+                print(f"  • {reason}")
+            print()
+
+        if event_rx.agent_focus:
+            print("Priority agents for your codebase:")
+            # Group agents by category
+            core = [a for a in event_rx.agent_focus if a in ["incident-commander", "metrics-collector", "health-checker"]]
+            observers = [a for a in event_rx.agent_focus if "collector" in a or "aggregator" in a or "monitor" in a and "anomaly" not in a]
+            monitors = [a for a in event_rx.agent_focus if "evaluator" in a or "detector" in a or "monitor" in a]
+            responders = [a for a in event_rx.agent_focus if "remediator" in a or "executor" in a or "recovery" in a]
+
+            if core:
+                print(f"  Core: {', '.join(core)}")
+            if observers:
+                print(f"  Observers: {', '.join(observers)}")
+            if monitors:
+                print(f"  Monitors: {', '.join(monitors)}")
+            if responders:
+                print(f"  Responders: {', '.join(responders)}")
+            print()
+
+        if event_rx.observability_advice and len(event_rx.observability_advice) > 0:
+            print("Observability advice for your stack:")
+            for i, advice in enumerate(event_rx.observability_advice[:6], 1):
+                print(f"  {i}. {advice}")
+            if len(event_rx.observability_advice) > 6:
+                print(f"  ... and {len(event_rx.observability_advice) - 6} more")
+            print()
 
     print("=" * 70)
     print(f"SELECTED OPTION: {primary.name} ({primary.tier.upper()})")
