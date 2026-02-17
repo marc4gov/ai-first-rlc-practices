@@ -147,6 +147,516 @@ class AgentTeamPrescription:
     custom_config: Dict[str, Any] = field(default_factory=dict)
 
 
+class HostingExplorer:
+    """Interactive helper for exploring hosting options based on codebase and preferences"""
+
+    # Cloud provider descriptions
+    PROVIDER_INFO = {
+        CloudProvider.AWS: {
+            "name": "Amazon Web Services",
+            "regions": "Global (10+ regions)",
+            "best_for": ["Enterprise", "Full cloud platform", "Mature ecosystem"],
+            "starting_cost": "~$10-50/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.SERVERLESS_LAMBDA, ComputePlatform.CONTAINER]
+        },
+        CloudProvider.GCP: {
+            "name": "Google Cloud Platform",
+            "regions": "Global (10+ regions)",
+            "best_for": ["Data/analytics", "Kubernetes", "Serverless"],
+            "starting_cost": "~$10-50/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.SERVERLESS_CLOUD_RUN]
+        },
+        CloudProvider.AZURE: {
+            "name": "Microsoft Azure",
+            "regions": "Global (10+ regions)",
+            "best_for": ["Enterprise", "Windows", "Microsoft stack"],
+            "starting_cost": "~$10-50/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.SERVERLESS]
+        },
+        # European providers
+        CloudProvider.SCALEWAY: {
+            "name": "Scaleway",
+            "regions": "France, Netherlands, Poland",
+            "best_for": ["EU privacy", "Best EU value", "French market"],
+            "starting_cost": "~€10-20/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.SERVERLESS, ComputePlatform.VM]
+        },
+        CloudProvider.OVHCLOUD: {
+            "name": "OVHcloud",
+            "regions": "France, Germany, EU-wide",
+            "best_for": ["EU privacy", "French market", "Cost-conscious"],
+            "starting_cost": "~€10-20/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.VM]
+        },
+        CloudProvider.HETZNER: {
+            "name": "Hetzner",
+            "regions": "Germany, Finland, US",
+            "best_for": ["Best EU value", "German privacy", "Budget"],
+            "starting_cost": "~€5-10/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.VM]
+        },
+        CloudProvider.EXOSCALE: {
+            "name": "Exoscale",
+            "regions": "Switzerland, France, Germany, Austria",
+            "best_for": ["Swiss privacy", "EU market", "Simple"],
+            "starting_cost": "~€10-20/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.VM]
+        },
+        CloudProvider.IONOS: {
+            "name": "IONOS",
+            "regions": "Germany, US, EU",
+            "best_for": ["German privacy", "SMB", "EU market"],
+            "starting_cost": "~€10-20/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.VM]
+        },
+        CloudProvider.GCORE: {
+            "name": "G-Core",
+            "regions": "Luxembourg, Global",
+            "best_for": ["Eastern EU", "Global edge", "Latency-sensitive"],
+            "starting_cost": "~€10-30/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.VM]
+        },
+        # PaaS platforms
+        CloudProvider.HEROKU: {
+            "name": "Heroku",
+            "regions": "Virginia, Frankfurt, Tokyo",
+            "best_for": ["Quick start", "Small teams", "Simple apps"],
+            "starting_cost": "~$5-7/month (Eco)",
+            "platforms": [ComputePlatform.VM]
+        },
+        CloudProvider.VERCEL: {
+            "name": "Vercel",
+            "regions": "Global edge",
+            "best_for": ["Frontend", "Next.js", "React"],
+            "starting_cost": "Free tier, ~$20/month Pro",
+            "platforms": [ComputePlatform.SERVERLESS, ComputePlatform.PAAS_NETLIFY]
+        },
+        CloudProvider.NETLIFY: {
+            "name": "Netlify",
+            "regions": "Global edge",
+            "best_for": ["Static sites", "JAMstack", "Frontend"],
+            "starting_cost": "Free tier, ~$19/month Pro",
+            "platforms": [ComputePlatform.PAAS_NETLIFY]
+        },
+        CloudProvider.RAILWAY: {
+            "name": "Railway",
+            "regions": "US, EU, Asia",
+            "best_for": ["Dev experience", "Small teams", "Quick deployment"],
+            "starting_cost": "~$5-20/month",
+            "platforms": [ComputePlatform.VM, ComputePlatform.VM]
+        },
+        CloudProvider.RENDER: {
+            "name": "Render",
+            "regions": "Oregon, Frankfurt, Singapore",
+            "best_for": ["Heroku alternative", "Simple"],
+            "starting_cost": "~$7-25/month",
+            "platforms": [ComputePlatform.VM]
+        },
+        CloudProvider.FLY_IO: {
+            "name": "Fly.io",
+            "regions": "Global (30+ regions)",
+            "best_for": ["Multi-region", "Close to users", "Docker"],
+            "starting_cost": "~$3-5/month per app",
+            "platforms": [ComputePlatform.VM, ComputePlatform.SERVERLESS]
+        },
+        # VM providers
+        CloudProvider.DIGITAL_OCEAN: {
+            "name": "DigitalOcean",
+            "regions": "12 regions (US, EU, Asia)",
+            "best_for": ["Simple", "Good docs", "Small teams"],
+            "starting_cost": "~$4-6/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.VM]
+        },
+        CloudProvider.VULTR: {
+            "name": "Vultr",
+            "regions": "Global (25+ regions)",
+            "best_for": ["Value", "Flexible"],
+            "starting_cost": "~$2.50-6/month",
+            "platforms": [ComputePlatform.VM]
+        },
+        CloudProvider.LINODE: {
+            "name": "Linode (Akamai)",
+            "regions": "Global (11 regions)",
+            "best_for": ["Value", "Linux", "Simple"],
+            "starting_cost": "~$5/month",
+            "platforms": [ComputePlatform.KUBERNETES, ComputePlatform.VM]
+        },
+    }
+
+    # Platform descriptions
+    PLATFORM_INFO = {
+        ComputePlatform.KUBERNETES: {
+            "name": "Kubernetes",
+            "description": "Container orchestration, scalable, complex",
+            "best_for": ["Microservices", "Scaling", "DevOps teams"],
+            "complexity": "High"
+        },
+        ComputePlatform.SERVERLESS_LAMBDA: {
+            "name": "AWS Lambda",
+            "description": "Serverless functions, pay-per-use",
+            "best_for": ["Event-driven", "Sporadic workloads", "APIs"],
+            "complexity": "Medium"
+        },
+        ComputePlatform.SERVERLESS_CLOUD_RUN: {
+            "name": "Google Cloud Run",
+            "description": "Serverless containers",
+            "best_for": ["Containers", "Serverless", "Web apps"],
+            "complexity": "Low"
+        },
+        ComputePlatform.SERVERLESS: {
+            "name": "Serverless (generic)",
+            "description": "Pay-per-use, auto-scaling",
+            "best_for": ["Variable load", "APIs", "Webhooks"],
+            "complexity": "Medium"
+        },
+        ComputePlatform.VM: {
+            "name": "Virtual Machine / Docker",
+            "description": "Full control, traditional hosting",
+            "best_for": ["Legacy apps", "Full control", "Simple setup"],
+            "complexity": "Medium"
+        },
+        ComputePlatform.CONTAINER: {
+            "name": "Container Hosting (ECS/ACI/Fargate)",
+            "description": "Managed container services",
+            "best_for": ["Containers", "Simpler than K8s"],
+            "complexity": "Medium"
+        },
+        ComputePlatform.PAAS_NETLIFY: {
+            "name": "Edge Network / JAMstack",
+            "description": "Global CDN + edge compute",
+            "best_for": ["Static sites", "JAMstack", "Global performance"],
+            "complexity": "Low"
+        },
+        ComputePlatform.DOCKER_COMPOSE: {
+            "name": "Docker Compose",
+            "description": "Multi-container on single host",
+            "best_for": ["Development", "Simple deployments", "Small apps"],
+            "complexity": "Low"
+        },
+    }
+
+    def __init__(self):
+        self.selected_provider = None
+        self.selected_platform = None
+        self.selected_tier = "balanced"
+
+    def explore_interactive(self, analysis: 'RepositoryAnalysis') -> tuple[CloudProvider, ComputePlatform]:
+        """Interactive exploration to find hosting options"""
+        print()
+        print("=" * 70)
+        print("🔍 HOSTING EXPLORER")
+        print("=" * 70)
+        print()
+        print("Your codebase doesn't clearly indicate where it's hosted.")
+        print("Let's explore options based on your needs and preferences.")
+        print()
+
+        # Step 1: Ask about region/data residency
+        region = self._ask_region_preference()
+
+        # Step 2: Filter providers by region and show options
+        providers = self._filter_providers_by_region(region)
+
+        # Step 3: Ask about complexity preference
+        complexity = self._ask_complexity_preference()
+
+        # Step 4: Ask about workload type
+        workload = self._ask_workload_type(analysis)
+
+        # Recommend providers and platforms
+        recommended_providers = self._recommend_providers(providers, complexity, workload)
+
+        print()
+        print("=" * 70)
+        print("💡 RECOMMENDED HOSTING OPTIONS")
+        print("=" * 70)
+        print()
+
+        for i, provider in enumerate(recommended_providers[:3], 1):
+            info = self.PROVIDER_INFO.get(provider, {})
+            print(f"{i}. **{info.get('name', provider.value)}**")
+            print(f"   Regions: {info.get('regions', 'Various')}")
+            print(f"   Starting cost: {info.get('starting_cost', 'Varies')}")
+            print(f"   Best for: {', '.join(info.get('best_for', []))}")
+            print()
+
+        # Get user selection
+        self.selected_provider = self._select_provider(recommended_providers)
+
+        # Now ask about platform
+        self.selected_platform = self._select_platform(self.selected_provider, workload, complexity)
+
+        return self.selected_provider, self.selected_platform
+
+    def _ask_region_preference(self) -> str:
+        """Ask about data residency preferences"""
+        print("🌍 **Step 1: Data Residency / Region Preference**")
+        print()
+        print("Where should your data and runtime be hosted?")
+        print()
+        print("  1. 🇪🇺 European Union (strict GDPR, privacy-first)")
+        print("  2. 🇺🇸 United States (global, mature ecosystem)")
+        print("  3. 🌍 Global (multiple regions, edge)")
+        print("  4. 🏳️ Anywhere (best value, no preference)")
+        print()
+
+        while True:
+            choice = input("Select option [1-4]: ").strip()
+            if choice == "1":
+                return "eu"
+            elif choice == "2":
+                return "us"
+            elif choice == "3":
+                return "global"
+            elif choice == "4":
+                return "any"
+            print("  Invalid choice, please enter 1-4")
+
+    def _filter_providers_by_region(self, region: str) -> List[CloudProvider]:
+        """Filter providers by region preference"""
+        if region == "any":
+            return list(self.PROVIDER_INFO.keys())
+
+        eu_providers = [
+            CloudProvider.SCALEWAY, CloudProvider.OVHCLOUD, CloudProvider.HETZNER,
+            CloudProvider.EXOSCALE, CloudProvider.IONOS, CloudProvider.GCORE,
+            CloudProvider.AWS, CloudProvider.GCP, CloudProvider.AZURE,  # Have EU regions
+        ]
+
+        us_providers = [
+            CloudProvider.AWS, CloudProvider.GCP, CloudProvider.AZURE,
+            CloudProvider.HEROKU, CloudProvider.VERCEL, CloudProvider.NETLIFY,
+            CloudProvider.RAILWAY, CloudProvider.RENDER, CloudProvider.FLY_IO,
+            CloudProvider.DIGITAL_OCEAN, CloudProvider.VULTR, CloudProvider.LINODE,
+        ]
+
+        global_providers = [
+            CloudProvider.VERCEL, CloudProvider.NETLIFY, CloudProvider.FLY_IO,
+            CloudProvider.AWS, CloudProvider.GCP, CloudProvider.AZURE,
+        ]
+
+        if region == "eu":
+            return eu_providers
+        elif region == "us":
+            return us_providers
+        elif region == "global":
+            return global_providers
+        return list(self.PROVIDER_INFO.keys())
+
+    def _ask_complexity_preference(self) -> str:
+        """Ask about complexity preference"""
+        print()
+        print("⚙️  **Step 2: Operations Complexity**")
+        print()
+        print("How much operational complexity can you handle?")
+        print()
+        print("  1. 🟢 Low - I want managed services, minimal ops")
+        print("  2. 🟡 Medium - I can handle some configuration")
+        print("  3. 🔴 High - I want full control, don't mind complexity")
+        print()
+
+        while True:
+            choice = input("Select option [1-3]: ").strip()
+            if choice == "1":
+                return "low"
+            elif choice == "2":
+                return "medium"
+            elif choice == "3":
+                return "high"
+            print("  Invalid choice, please enter 1-3")
+
+    def _ask_workload_type(self, analysis: 'RepositoryAnalysis') -> str:
+        """Ask about workload type, informed by codebase analysis"""
+        print()
+        print("🚀 **Step 3: Workload Type**")
+        print()
+
+        # Infer from codebase
+        inferred = []
+        if analysis.languages:
+            langs = [l.value for l in analysis.languages]
+            if "python" in langs:
+                inferred.append("backend API")
+            if "javascript" in langs or "typescript" in langs:
+                inferred.append("frontend")
+
+        if analysis.frameworks:
+            if "react" in analysis.frameworks or "next" in analysis.frameworks:
+                inferred.append("static/SSR frontend")
+            if "django" in analysis.frameworks or "fastapi" in analysis.frameworks:
+                inferred.append("backend API")
+
+        print("Based on your codebase:")
+        if inferred:
+            print(f"  Detected: {', '.join(set(inferred))}")
+        else:
+            print("  No specific patterns detected")
+        print()
+
+        print("What type of workload is this?")
+        print()
+        print("  1. 🌐 Web app (frontend + backend)")
+        print("  2. 🔌 API / Backend only")
+        print("  3. 🎨 Frontend / Static site")
+        print("  4. 🔄 Microservices")
+        print("  5. ⚙️  Background workers / Jobs")
+        print()
+
+        while True:
+            choice = input("Select option [1-5]: ").strip()
+            if choice == "1":
+                return "webapp"
+            elif choice == "2":
+                return "api"
+            elif choice == "3":
+                return "frontend"
+            elif choice == "4":
+                return "microservices"
+            elif choice == "5":
+                return "jobs"
+            print("  Invalid choice, please enter 1-5")
+
+    def _recommend_providers(self, providers: List[CloudProvider], complexity: str, workload: str) -> List[CloudProvider]:
+        """Recommend providers based on preferences"""
+
+        def score_provider(provider: CloudProvider) -> tuple[int, str]:
+            """Score provider, return (score, reason)"""
+            info = self.PROVIDER_INFO.get(provider, {})
+            score = 0
+            reasons = []
+
+            # Base score for all
+            score += 50
+
+            # Complexity scoring
+            if complexity == "low":
+                if provider in [CloudProvider.VERCEL, CloudProvider.NETLIFY, CloudProvider.RENDER,
+                               CloudProvider.RAILWAY, CloudProvider.HEROKU, CloudProvider.GCP]:
+                    score += 30
+                    reasons.append("managed")
+                elif provider in [CloudProvider.AWS, CloudProvider.GCP, CloudProvider.AZURE]:
+                    score -= 10
+            elif complexity == "high":
+                if provider in [CloudProvider.HETZNER, CloudProvider.OVHCLOUD, CloudProvider.EXOSCALE]:
+                    score += 20
+                    reasons.append("control")
+
+            # Workload scoring
+            if workload == "frontend":
+                if provider in [CloudProvider.VERCEL, CloudProvider.NETLIFY]:
+                    score += 40
+                    reasons.append("optimized for frontend")
+            elif workload == "webapp":
+                if provider in [CloudProvider.VERCEL, CloudProvider.RENDER, CloudProvider.RAILWAY,
+                               CloudProvider.FLY_IO, CloudProvider.HEROKU]:
+                    score += 25
+                    reasons.append("great for webapps")
+            elif workload == "microservices":
+                if provider in [CloudProvider.AWS, CloudProvider.GCP, CloudProvider.AZURE]:
+                    score += 30
+                    reasons.append("enterprise K8s")
+            elif workload == "api":
+                if provider in [CloudProvider.GCP, CloudProvider.RENDER, CloudProvider.RAILWAY]:
+                    score += 20
+                    reasons.append("great for APIs")
+
+            # EU providers get bonus for being explicit about EU hosting
+            if provider in [CloudProvider.SCALEWAY, CloudProvider.HETZNER, CloudProvider.OVHCLOUD,
+                           CloudProvider.EXOSCALE, CloudProvider.IONOS]:
+                score += 10
+                reasons.append("EU-native")
+
+            reason_str = ", ".join(reasons) if reasons else "solid choice"
+            return (score, reason_str)
+
+        # Score and sort
+        scored = [(p, *score_provider(p)) for p in providers]
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        return [p for p, _, _ in scored]
+
+    def _select_provider(self, recommended: List[CloudProvider]) -> CloudProvider:
+        """Let user select from recommended providers"""
+        print()
+        print("Select a provider to see platform options:")
+        for i, provider in enumerate(recommended[:5], 1):
+            info = self.PROVIDER_INFO.get(provider, {})
+            name = info.get("name", provider.value)
+            print(f"  {i}. {name}")
+
+        while True:
+            choice = input(f"\nSelect provider [1-{min(5, len(recommended))}]: ").strip()
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < min(5, len(recommended)):
+                    return recommended[idx]
+            except ValueError:
+                pass
+            print(f"  Invalid choice, please enter 1-{min(5, len(recommended))}")
+
+    def _select_platform(self, provider: CloudProvider, workload: str, complexity: str) -> ComputePlatform:
+        """Select compute platform for the chosen provider"""
+        info = self.PROVIDER_INFO.get(provider, {})
+        available_platforms = info.get("platforms", [])
+
+        print()
+        print("=" * 70)
+        print(f"🔧 **Platform Options for {info.get('name', provider.value)}**")
+        print("=" * 70)
+        print()
+
+        # Add workload-specific recommendations
+        recommended_platforms = []
+
+        # Helper to check if platform family is in list
+        def has_platform_family(family):
+            return any(p.value.startswith(family.value) for p in available_platforms)
+
+        if workload == "frontend" and has_platform_family(ComputePlatform.PAAS_NETLIFY):
+            recommended_platforms.append([p for p in available_platforms if "netlify" in p.value or "vercel" in p.value][0])
+        if workload == "microservices" and has_platform_family(ComputePlatform.KUBERNETES):
+            # Get first K8s variant
+            k8s_opts = [p for p in available_platforms if "kubernetes" in p.value]
+            if k8s_opts:
+                recommended_platforms.append(k8s_opts[0])
+        if complexity == "low" and has_platform_family(ComputePlatform.VM):
+            recommended_platforms.append(ComputePlatform.VM)
+        if not recommended_platforms:
+            recommended_platforms = available_platforms[:2]
+
+        for i, platform in enumerate(available_platforms, 1):
+            # Get platform info, fallback to generic types
+            platform_info = self.PLATFORM_INFO.get(platform)
+            if not platform_info:
+                # Try to get info from parent type
+                if "kubernetes" in platform.value:
+                    platform_info = self.PLATFORM_INFO.get(ComputePlatform.KUBERNETES, {})
+                elif "serverless" in platform.value:
+                    platform_info = self.PLATFORM_INFO.get(ComputePlatform.SERVERLESS, {})
+                elif "vm" in platform.value:
+                    platform_info = self.PLATFORM_INFO.get(ComputePlatform.VM, {})
+                else:
+                    platform_info = {"name": platform.value, "description": "Cloud platform", "complexity": "Medium"}
+
+            name = platform_info.get("name", platform.value)
+            desc = platform_info.get("description", "")
+            badge = " ⭐ Recommended" if platform in recommended_platforms else ""
+            print(f"  {i}. {name}{badge}")
+            print(f"     {desc}")
+            print(f"     Complexity: {platform_info.get('complexity', 'Medium')}")
+            print()
+
+        while True:
+            choice = input(f"Select platform [1-{len(available_platforms)}]: ").strip()
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(available_platforms):
+                    return available_platforms[idx]
+            except ValueError:
+                pass
+            print(f"  Invalid choice, please enter 1-{len(available_platforms)}")
+
+
 class RepositoryAnalyzer:
     """Analyzes repository to detect characteristics"""
 
@@ -2941,6 +3451,12 @@ def main():
     parser.add_argument("--list-options", action="store_true", help="List all event handling options without generating setup")
     parser.add_argument("--show-tier", choices=["budget", "balanced", "premium"],
                        help="Show details for a specific tier")
+    parser.add_argument("--interactive", "-i", action="store_true",
+                       help="Interactive mode to explore hosting options when unclear")
+    parser.add_argument("--non-interactive", action="store_true",
+                       help="Skip interactive prompts, use generic recommendations")
+    parser.add_argument("--explore", action="store_true",
+                       help="Explore hosting options interactively without generating setup")
 
     args = parser.parse_args()
 
@@ -2966,6 +3482,40 @@ def main():
         except ValueError:
             print(f"❌ Invalid platform: {args.platform}")
             return
+
+    # Interactive mode if hosting unclear and not explicitly disabled
+    is_hosting_unclear = (
+        analysis.cloud_provider == CloudProvider.UNKNOWN or
+        analysis.compute_platform == ComputePlatform.UNKNOWN
+    )
+
+    # Handle --explore flag
+    if args.explore:
+        explorer = HostingExplorer()
+        selected_provider, selected_platform = explorer.explore_interactive(analysis)
+        print()
+        print("=" * 70)
+        print("EXPLORATION COMPLETE")
+        print("=" * 70)
+        print()
+        print(f"Selected: {selected_provider.value} + {selected_platform.value}")
+        print()
+        print("To generate setup with these choices:")
+        print(f"  python tools/wizard/rlc-setup-wizard.py {args.repo_path} --cloud {selected_provider.value} --platform {selected_platform.value}")
+        return
+
+    if is_hosting_unclear and not args.non_interactive:
+        if args.interactive or not (args.cloud or args.platform):
+            # Auto-enter interactive mode if hosting is unclear
+            if not args.interactive:
+                print("ℹ️  Hosting configuration unclear. Entering interactive mode.")
+                print("   Use --non-interactive to skip and use generic recommendations.")
+                print()
+
+            explorer = HostingExplorer()
+            selected_provider, selected_platform = explorer.explore_interactive(analysis)
+            analysis.cloud_provider = selected_provider
+            analysis.compute_platform = selected_platform
 
     # Display analysis
     print("Repository Analysis:")
