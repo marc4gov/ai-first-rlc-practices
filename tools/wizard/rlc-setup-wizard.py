@@ -4018,11 +4018,29 @@ def main():
         print(f"  {name}: {path}")
     print()
 
-    print("To see all options:")
-    print(f"  python tools/wizard/rlc-setup-wizard.py {args.repo_path} --list-options")
+    print("=" * 60)
+    print("🏗️  NEXT STEP: Run the Construction Agent")
+    print("=" * 60)
     print()
-    print("To change tier:")
-    print(f"  python tools/wizard/rlc-setup-wizard.py {args.repo_path} --tier [budget|balanced|premium]")
+    print("The RLC Construction Agent will:")
+    print("  • Create event handling infrastructure in your codebase")
+    print("  • Configure RLC agents based on your stack")
+    print("  • Add observability instrumentation")
+    print("  • Set up CI/CD integration")
+    print()
+    print("Run:")
+    print(f"  python agents/core/rlc_construction.py build --config {args.output} --repo-root {args.repo_path}")
+    print()
+    print("Or to preview changes without modifying files:")
+    print(f"  python agents/core/rlc_construction.py build --config {args.output} --repo-root {args.repo_path} --dry-run")
+    print()
+    print("To validate an existing setup:")
+    print(f"  python agents/core/rlc_construction.py validate --repo-root {args.repo_path}")
+    print()
+
+    print("Other options:")
+    print(f"  • See all event handling options: python tools/wizard/rlc-setup-wizard.py {args.repo_path} --list-options")
+    print(f"  • Change tier: python tools/wizard/rlc-setup-wizard.py {args.repo_path} --tier [budget|balanced|premium]")
 
 
 if __name__ == "__main__":
