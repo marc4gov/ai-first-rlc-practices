@@ -3882,13 +3882,9 @@ def main():
     event_prescriber = EventHandlingPrescriber()
     event_rx = event_prescriber.prescribe(analysis)
 
-    # Use the opinionated recommendation as default, unless user explicitly specified a tier
-    # The args.tier default is "balanced" - only use it if recommendation wasn't set
-    if args.tier != "balanced" or not event_rx.selected_tier:
-        event_rx.selected_tier = args.tier
-    # Keep the opinionated recommendation from the prescriber
-
-    primary = next((o for o in event_rx.options if o.tier == event_rx.selected_tier), event_rx.options[0])
+    # User-specified tier takes precedence over opinionated recommendation
+    event_rx.selected_tier = args.tier
+    primary = next((o for o in event_rx.options if o.tier == args.tier), event_rx.options[0])
     event_rx.primary = primary
 
     # Show options if requested
