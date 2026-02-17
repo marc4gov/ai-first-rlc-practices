@@ -50,28 +50,67 @@ Mandatory checkpoints for runtime operations:
 - Post-mortem documents
 - Event schemas
 
+### AI Model Recommendations
+
+Per-agent open-source model recommendations for local deployment:
+- **Budget Tier**: 3-4B models (8GB VRAM, <$50/month)
+- **Balanced Tier**: 3-7B models (16GB VRAM, $50-150/month)
+- **Premium Tier**: 3-14B+ models (32GB VRAM, $200-1000+/month)
+
+Supported models: Llama, Mistral, Qwen, Phi, Mixtral
+
 ## Quick Start
+
+### For Users: Setting Up RLC for Your Runtime
+
+**Step 1:** Open your infrastructure repository where you want to implement RLC practices.
+
+**Step 2:** Give Claude this prompt:
+```
+I want to set up the AI-First RLC framework from https://github.com/your-org/ai-first-rlc-practices for my production runtime.
+```
+
+Claude will ask you about your workload type and hosting preferences, then:
+1. Analyze your codebase for languages, frameworks, deployment configs
+2. Prescribe event handling stack and agent team configuration
+3. Generate setup artifacts in `./rlc-setup/`
+4. Run the Construction Agent to build infrastructure
+5. Configure AI models and MCP servers for each agent
+
+See [QUICKSTART.md](QUICKSTART.md) for detailed step-by-step instructions.
+
+### For Framework Contributors
 
 ```bash
 # Clone the repository
 git clone https://github.com/your-org/ai-first-rlc-practices.git
 cd ai-first-rlc-practices
 
-# Set up the framework
+# Run the setup
 ./setup.sh
 
-# Launch Claude with RLC context
-./bin/claude
+# Read the core instructions
+cat CLAUDE-CORE.md
 ```
 
 ## Documentation
 
-- [CLAUDE-CORE.md](CLAUDE-CORE.md) - Core framework instructions
-- [CLAUDE-SETUP.md](CLAUDE-SETUP.md) - Setup guide
-- [AGENT-INDEX.md](AGENT-INDEX.md) - Complete agent catalog
-- [EVENT-HANDLING.md](docs/EVENT-HANDLING.md) - Event module guide
-- [RLC-GATES.md](docs/RLC-GATES.md) - Gates configuration
-- [RUNBOOKS.md](docs/RUNBOOKS.md) - Runbook templates
+### Essential Guides
+
+- **[CLAUDE-CORE.md](CLAUDE-CORE.md)** - Core framework instructions for agent teams
+- **[CLAUDE-SETUP.md](CLAUDE-SETUP.md)** - Setup and configuration guide
+- **[QUICKSTART.md](QUICKSTART.md)** - Get started in minutes
+- **[AGENT-INDEX.md](AGENT-INDEX.md)** - Complete agent catalog
+
+### Module Documentation
+
+- **[docs/EVENT-HANDLING.md](docs/EVENT-HANDLING.md)** - Event handling system guide
+- **[docs/agent-model-advisory.md](docs/agent-model-advisory.md)** - AI model selection guide
+
+### Contribution
+
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes
 
 ## Agent Categories
 
@@ -82,6 +121,8 @@ cd ai-first-rlc-practices
 | **Alerters** | Route notifications | alert-router, escalation-manager, on-call-coordinator |
 | **Controllers** | Execute actions | auto-remediator, circuit-breaker, graceful-degrader |
 | **Responders** | Handle incidents | incident-commander, runbook-executor, post-mortem-writer |
+
+See [AGENT-INDEX.md](AGENT-INDEX.md) for the complete catalog of 10+ agents.
 
 ## RLC vs SDLC
 
@@ -94,6 +135,89 @@ cd ai-first-rlc-practices
 | **Documents** | Architecture, ADRs, traceability | Runbooks, SLOs, post-mortems |
 | **Validation** | Code quality, test coverage | SLO compliance, MTTR |
 
+## Event Handling Stack
+
+The RLC framework supports three tiers of event handling infrastructure:
+
+### Budget Tier (Self-Hosted)
+- **Prometheus** + **Grafana** (self-hosted)
+- **Loki** for logs
+- **Jaeger** for tracing
+- **Tempo** for trace storage
+- Cost: <$50/month
+- Best for: Development, resource-constrained environments
+
+### Balanced Tier (Managed)
+- **Grafana Cloud** or **Datadog**
+- Managed metrics, logs, and traces
+- Cost: $50-150/month
+- Best for: Production workloads
+
+### Premium Tier (Enterprise)
+- **Splunk** + **New Relic** + **Datadog**
+- Enterprise-grade observability
+- Cost: $200-1000+/month
+- Best for: Mission-critical systems
+
+## Supported Technologies
+
+### Languages
+- Python, JavaScript/TypeScript, Go, Java, Ruby, Rust, WebAssembly
+
+### Platforms
+- Kubernetes, Docker, Serverless (AWS Lambda, GCP Cloud Run), VM, PaaS
+
+### Cloud Providers
+- AWS, GCP, Azure, Hetzner, Scaleway, OVHcloud, DigitalOcean
+
+### Observability Tools
+- Prometheus, Grafana, Loki, Jaeger, Tempo, Datadog, New Relic, Splunk
+
+## Project Structure
+
+```
+rlc/
+├── agents/              # Runtime agent definitions
+│   ├── core/           # Core runtime agents
+│   ├── observers/      # Telemetry collection
+│   ├── monitors/       # Health evaluation
+│   ├── alerters/       # Notification routing
+│   ├── controllers/    # Remediation actions
+│   └── responders/     # Incident handling
+├── events/             # Event handling module
+│   ├── ingestion/      # Event intake
+│   ├── routing/        # Agent routing
+│   ├── correlation/    # Event correlation
+│   └── state_machine/  # Incident state management
+├── templates/          # Runtime templates
+│   ├── runbooks/       # Incident runbooks
+│   ├── incident/       # Incident docs
+│   └── architecture/   # SLO/SLI definitions
+├── tools/              # Validation and automation
+│   ├── validation/     # Configuration validators
+│   └── wizard/         # RLC Setup Wizard
+├── docs/               # Documentation
+│   ├── EVENT-HANDLING.md
+│   └── agent-model-advisory.md
+├── .rlc/config/        # RLC configuration
+│   ├── gates.yaml
+│   ├── agent-models-template.yaml
+│   └── mcp-servers-template.yaml
+├── CLAUDE-CORE.md      # Core framework instructions
+├── CLAUDE-SETUP.md     # Setup guide
+├── QUICKSTART.md       # Quick start guide
+├── AGENT-INDEX.md      # Agent catalog
+├── CONTRIBUTING.md     # Contribution guidelines
+└── CHANGELOG.md        # Version history
+```
+
+## Requirements
+
+- Python 3.8+ (for setup scripts)
+- Git 2.0+
+- Ollama or vLLM (for local AI models)
+- Kubernetes/Docker (for containerized workloads)
+
 ## Contributing
 
 This framework follows the same principles as ai-first-sdlc-practices:
@@ -104,6 +228,12 @@ This framework follows the same principles as ai-first-sdlc-practices:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
+## Version
+
+Current version: **0.2.0**
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and changes.
+
 ## License
 
 MIT License - See [LICENSE](LICENSE) for details.
@@ -112,6 +242,7 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 - [ai-first-sdlc-practices](https://github.com/SteveGJones/ai-first-sdlc-practices) - SDLC framework
 - [agent-sdk-python](https://github.com/anthropics/agent-sdk-python) - Agent SDK for Python
+- [Anthropic MCP](https://github.com/anthropics/mcp-model-context-protocol) - Model Context Protocol
 
 ---
 
