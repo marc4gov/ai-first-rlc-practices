@@ -21,9 +21,35 @@ from enum import Enum
 
 
 class CloudProvider(Enum):
+    # Major Cloud Providers
     AWS = "aws"
     GCP = "gcp"
     AZURE = "azure"
+
+    # European Cloud Providers
+    SCALEWAY = "scaleway"       # France
+    OVHCLOUD = "ovhcloud"        # France
+    EXOSCALE = "exoscale"        # France (Outscale)
+    CLEVER_CLOUD = "clever_cloud" # France
+    HETZNER = "hetzner"          # Germany
+    IONOS = "ionos"              # Germany
+    GCORE = "gcore"              # Luxembourg
+    LINODE = "linode"            # Akamai (originally US, popular in EU)
+
+    # PaaS / Container Platforms (Global with EU presence)
+    HEROKU = "heroku"            # Salesforce
+    VERCEL = "vercel"            # Edge network with EU regions
+    NETLIFY = "netlify"           # Edge network with EU regions
+    RAILWAY = "railway"           # US-based, popular in EU
+    RENDER = "render"             # US-based
+    FLY_IO = "fly_io"             # Edge regions worldwide
+
+    # Cloud-adjacent platforms
+    DIGITAL_OCEAN = "digital_ocean"  # US with EU datacenters
+    VULTR = "vultr"                  # US with EU datacenters
+
+    # Self-hosted options
+    SELF_HOSTED = "self_hosted"
     ON_PREM = "on_prem"
     HYBRID = "hybrid"
     UNKNOWN = "unknown"
@@ -31,9 +57,24 @@ class CloudProvider(Enum):
 
 class ComputePlatform(Enum):
     KUBERNETES = "kubernetes"
+    KUBERNETES_EKS = "kubernetes_eks"
+    KUBERNETES_GKE = "kubernetes_gke"
+    KUBERNETES_AKS = "kubernetes_aks"
+    KUBERNETES_SELF = "kubernetes_self"
+    KUBERNETES_K3S = "kubernetes_k3s"
     SERVERLESS = "serverless"
+    SERVERLESS_LAMBDA = "serverless_lambda"
+    SERVERLESS_CLOUD_RUN = "serverless_cloud_run"
+    SERVERLESS_CLOUD_FUNCTIONS = "serverless_cloud_functions"
+    PAAS_HEROKU = "paas_heroku"
+    PAAS_VERCEL = "paas_vercel"
+    PAAS_NETLIFY = "paas_netlify"
+    PAAS_RAILWAY = "paas_railway"
+    PAAS_RENDER = "paas_render"
+    PAAS_FLY_IO = "paas_fly_io"
     VM = "vm"
     CONTAINER = "container"
+    DOCKER_COMPOSE = "docker_compose"
     BARE_METAL = "bare_metal"
     UNKNOWN = "unknown"
 
@@ -119,22 +160,118 @@ class RepositoryAnalyzer:
     }
 
     DEPLOYMENT_INDICATORS = {
+        # Kubernetes distributions
         ("kubernetes", ComputePlatform.KUBERNETES): [
             "kubernetes/", "k8s/", "helm/", "Chart.yaml",
-            "deployment.yaml", "deployment.yml", "*.yaml"
+            "deployment.yaml", "deployment.yml", "k8s/",
+            "namespace.yaml", "configmap.yaml", "secret.yaml"
         ],
+        ("kubernetes-eks", ComputePlatform.KUBERNETES_EKS): [
+            "eks/", "aws-eks/", "*.eks.yaml",
+            "aws-sdk/", "amazon-eks/"
+        ],
+        ("kubernetes-gke", ComputePlatform.KUBERNETES_GKE): [
+            "gke/", "gke-config.yaml", "gcloud/",
+            "google-gke/", "*.gke.yaml"
+        ],
+        ("kubernetes-aks", ComputePlatform.KUBERNETES_AKS): [
+            "aks/", "azure-aks/", "*.aks.yaml",
+            "azure-k8s/", "microsoft-aks/"
+        ],
+        ("kubernetes-k3s", ComputePlatform.KUBERNETES_K3S): [
+            "k3s/", "k3s-config.yaml", "rancher/",
+            "k3s-cluster/"
+        ],
+        ("kubernetes-self", ComputePlatform.KUBERNETES_SELF): [
+            "kubeadm.yaml", "kubeadm-config.yaml",
+            "self-hosted-k8s/"
+        ],
+
+        # Docker / Container
         ("docker", ComputePlatform.CONTAINER): [
-            "Dockerfile", "docker-compose.yml", "docker-compose.yaml", ".dockerignore"
+            "Dockerfile", "docker-compose.yml", "docker-compose.yaml",
+            ".dockerignore", ".containerignore"
         ],
-        ("terraform", ComputePlatform.KUBERNETES): [
-            "*.tf", "terraform/", "main.tf"
+        ("docker-compose", ComputePlatform.DOCKER_COMPOSE): [
+            "docker-compose.yml", "docker-compose.yaml",
+            "compose.yml", "compose.yaml",
+            "docker-compose.override.yml"
         ],
+
+        # Serverless Frameworks
         ("serverless", ComputePlatform.SERVERLESS): [
             "serverless.yml", "serverless.ts", "serverless.yaml",
-            "template.yaml", "app.sam.yaml"
+            "serverless/", "serverless-framework/"
         ],
-        ("cloudrun", ComputePlatform.SERVERLESS): [
-            "app.yaml", "cloudbuild.yaml"
+        ("aws-lambda", ComputePlatform.SERVERLESS_LAMBDA): [
+            "template.yaml", "app.sam.yaml", "sam.yaml",
+            "aws-sam/", "lambda/", ".aws-sam/"
+        ],
+        ("cloud-run", ComputePlatform.SERVERLESS_CLOUD_RUN): [
+            "app.yaml", "cloudbuild.yaml", "cloudrun/",
+            "CloudRun/", "cloud-run/"
+        ],
+        ("cloud-functions", ComputePlatform.SERVERLESS_CLOUD_FUNCTIONS): [
+            "main.py", "index.py", "gcf/",
+            "cloudfunctions/", "google-cloud-functions/"
+        ],
+
+        # PaaS / Cloud Providers
+        ("heroku", ComputePlatform.PAAS_HEROKU): [
+            "Procfile", "heroku.yml", ".heroku/",
+            "heroku/", "app.json"
+        ],
+        ("vercel", ComputePlatform.PAAS_VERCEL): [
+            "vercel.json", ".vercel/", "vercel/",
+            "now.json", ".now/"
+        ],
+        ("netlify", ComputePlatform.PAAS_NETLIFY): [
+            "netlify.toml", ".netlify/", "netlify/",
+            "_headers", "_redirects"
+        ],
+        ("railway", ComputePlatform.PAAS_RAILWAY): [
+            "railway.json", "railway/", ".railway/",
+            "railway.toml", "railway.app/"
+        ],
+        ("render", ComputePlatform.PAAS_RENDER): [
+            "render.yaml", "render/", "render.yaml",
+            ".render/", "render.com/"
+        ],
+        ("fly-io", ComputePlatform.PAAS_FLY_IO): [
+            "fly.toml", ".fly/", "fly/",
+            "fly.io/", "fly.app/"
+        ],
+
+        # European cloud providers
+        ("scaleway", ComputePlatform.VM): [
+            "scaleway.yml", "scaleway/", "scw/",
+            "scaleway.com/"
+        ],
+        ("ovhcloud", ComputePlatform.VM): [
+            "ovh.yml", "ovh/", "ovhcloud/",
+            "ovh.conf"
+        ],
+        ("hetzner", ComputePlatform.VM): [
+            "hetzner.yml", "hetzner/", "hcloud/",
+            "hetzner.com/"
+        ],
+        ("exoscale", ComputePlatform.VM): [
+            "exoscale.yml", "exoscale/", "exo/",
+            "exoscale.com/"
+        ],
+        ("clever-cloud", ComputePlatform.PAAS_HEROKU): [
+            "clever-cloud/", "clever.json",
+            "clever-cloud.com/"
+        ],
+
+        # Infrastructure as Code
+        ("terraform", ComputePlatform.KUBERNETES): [
+            "*.tf", "terraform/", "main.tf", "variables.tf",
+            "outputs.tf", "modules/"
+        ],
+        ("ansible", ComputePlatform.VM): [
+            "playbook.yml", "ansible/", "ansible.cfg",
+            "inventory/", "requirements.yml"
         ],
     }
 
@@ -251,33 +388,194 @@ class RepositoryAnalyzer:
         return detected
 
     def _detect_cloud_provider(self, files: List[str]) -> CloudProvider:
-        """Detect cloud provider from configuration"""
-        # Check for AWS indicators
-        if any("terraform" in f and f.endswith(".tf") for f in files):
-            tf_files = [f for f in files if f.endswith(".tf")]
-            for tf_file in tf_files:
-                content = (self.repo_path / tf_file).read_text().lower()
-                if "aws_" in content or '"aws"' in content:
-                    return CloudProvider.AWS
+        """Detect cloud provider from configuration files and metadata"""
 
-        # Check for GCP indicators
-        if any("cloudbuild.yaml" in f or "app.yaml" in f for f in files):
-            return CloudProvider.GCP
+        # Check specific provider indicators
+        provider_indicators = {
+            # AWS
+            CloudProvider.AWS: [
+                ("terraform", lambda c: "aws_" in c or "hashicorp/aws" in c),
+                ("serverless", lambda c: "aws:" in c or "aws-iam" in c),
+                ("template.yaml", lambda c: "aws:aws:" in c or "AWS::" in c),
+                ("Procfile", lambda c: False),  # Exclude from AWS check
+            ],
 
-        # Check for Azure indicators
-        if any("azure-pipelines" in f or "main.bicep" in f for f in files):
-            return CloudProvider.AZURE
+            # GCP
+            CloudProvider.GCP: [
+                ("cloudbuild.yaml", lambda c: True),
+                ("app.yaml", lambda c: "runtime:" in c),  # Cloud Run app.yaml
+                ("main.py", lambda c: False),  # Exclude generic .py
+                ("terraform", lambda c: "google" in c and "google_compute" in c),
+            ],
 
-        # Default
+            # Azure
+            CloudProvider.AZURE: [
+                ("azure-pipelines", lambda c: True),
+                ("main.bicep", lambda c: True),
+                ("terraform", lambda c: "azurerm" in c),
+                ("template.yaml", lambda c: "azure:" in c),
+            ],
+
+            # European providers
+            CloudProvider.SCALEWAY: [
+                ("terraform", lambda c: "scaleway" in c or "scaleway" in c),
+                ("scaleway.yml", lambda c: True),
+                ("scw/", lambda c: True),
+            ],
+
+            CloudProvider.OVHCLOUD: [
+                ("terraform", lambda c: "ovh" in c),
+                ("ovh.yml", lambda c: True),
+                ("ovh.conf", lambda c: True),
+            ],
+
+            CloudProvider.HETZNER: [
+                ("terraform", lambda c: "hetzner" in c or "hcloud" in c),
+                ("hetzner.yml", lambda c: True),
+                ("hcloud/", lambda c: True),
+            ],
+
+            CloudProvider.EXOSCALE: [
+                ("terraform", lambda c: "exoscale" in c),
+                ("exoscale.yml", lambda c: True),
+                ("exo/", lambda c: True),
+            ],
+
+            CloudProvider.IONOS: [
+                ("terraform", lambda c: "ionos" in c),
+                ("ionos.yml", lambda c: True),
+            ],
+
+            CloudProvider.GCORE: [
+                ("terraform", lambda c: "gcore" in c),
+                ("gcore.yml", lambda c: True),
+            ],
+
+            # PaaS providers
+            CloudProvider.HEROKU: [
+                ("Procfile", lambda c: True),
+                ("heroku.yml", lambda c: True),
+                ("app.json", lambda c: '"name"' in c and '"buildpacks"' in c),
+            ],
+
+            CloudProvider.VERCEL: [
+                ("vercel.json", lambda c: True),
+                ("now.json", lambda c: True),
+                (".vercel/", lambda c: True),
+            ],
+
+            CloudProvider.NETLIFY: [
+                ("netlify.toml", lambda c: True),
+                ("_headers", lambda c: True),
+                ("_redirects", lambda c: True),
+            ],
+
+            CloudProvider.RAILWAY: [
+                ("railway.json", lambda c: True),
+                ("railway.toml", lambda c: True),
+                ("railway.app", lambda c: True),
+            ],
+
+            CloudProvider.RENDER: [
+                ("render.yaml", lambda c: True),
+                ("render.com/", lambda c: True),
+            ],
+
+            CloudProvider.FLY_IO: [
+                ("fly.toml", lambda c: True),
+                ("fly.io/", lambda c: True),
+                (".fly/", lambda c: True),
+            ],
+
+            CloudProvider.DIGITAL_OCEAN: [
+                ("terraform", lambda c: "digitalocean" in c),
+                (".do/", lambda c: True),
+                ("do.yml", lambda c: True),
+            ],
+
+            CloudProvider.VULTR: [
+                ("terraform", lambda c: "vultr" in c),
+                ("vultr.yml", lambda c: True),
+            ],
+
+            CloudProvider.LINODE: [
+                ("terraform", lambda c: "linode" in c or "akamai" in c),
+                ("linode.yml", lambda c: True),
+            ],
+        }
+
+        # Check each provider's indicators
+        for provider, indicators in provider_indicators.items():
+            for file_pattern, content_check in indicators:
+                # Check if file exists matching pattern
+                matching_files = [f for f in files if file_pattern in f.lower()]
+
+                for file in matching_files:
+                    file_path = self.repo_path / file
+                    if file_path.exists() and file_path.is_file():
+                        try:
+                            content = file_path.read_text().lower()
+                            if content_check(content):
+                                return provider
+                        except Exception:
+                            pass
+
+        # Check content of dependency files for provider hints
+        for dep_file in ["package.json", "requirements.txt", "pom.xml", "build.gradle"]:
+            if dep_file in files:
+                file_path = self.repo_path / dep_file
+                if file_path.exists():
+                    content = file_path.read_text().lower()
+
+                    # Check for provider-specific packages
+                    provider_packages = {
+                        CloudProvider.AWS: ["aws-sdk", "@aws-sdk/", "boto3", "aws-cdk"],
+                        CloudProvider.GCP: ["@google-cloud/", "google-cloud-", "gcloud"],
+                        CloudProvider.AZURE: ["@azure/", "azure-"],
+                        CloudProvider.HEROKU: ["heroku"],
+                        CloudProvider.VERCEL: ["vercel", "@vercel/"],
+                        CloudProvider.NETLIFY: ["netlify-cli", "netlify-"],
+                        CloudProvider.SCALEWAY: ["scaleway"],
+                        CloudProvider.HETZNER: ["hetzner", "hcloud"],
+                    }
+
+                    for provider, packages in provider_packages.items():
+                        if any(pkg in content for pkg in packages):
+                            return provider
+
+        # Default to unknown
         return CloudProvider.UNKNOWN
 
     def _detect_compute_platform(self, files: List[str]) -> ComputePlatform:
         """Detect compute platform"""
-        for name, platform in self.DEPLOYMENT_INDICATORS.items():
-            deployment_name, platform_type = name
-            for indicator in platform:
-                if any(indicator in f for f in files):
-                    return platform_type
+        # Check in priority order: more specific platforms first
+        priority_order = [
+            ComputePlatform.DOCKER_COMPOSE,
+            ComputePlatform.SERVERLESS_LAMBDA,
+            ComputePlatform.SERVERLESS_CLOUD_RUN,
+            ComputePlatform.SERVERLESS_CLOUD_FUNCTIONS,
+            ComputePlatform.PAAS_HEROKU,
+            ComputePlatform.PAAS_VERCEL,
+            ComputePlatform.PAAS_NETLIFY,
+            ComputePlatform.PAAS_RAILWAY,
+            ComputePlatform.PAAS_RENDER,
+            ComputePlatform.PAAS_FLY_IO,
+            ComputePlatform.KUBERNETES_K3S,
+            ComputePlatform.KUBERNETES_SELF,
+            ComputePlatform.KUBERNETES_AKS,
+            ComputePlatform.KUBERNETES_GKE,
+            ComputePlatform.KUBERNETES_EKS,
+            ComputePlatform.KUBERNETES,
+            ComputePlatform.VM,
+            ComputePlatform.CONTAINER,
+        ]
+
+        for target_platform in priority_order:
+            for (deployment_name, platform_type), indicators in self.DEPLOYMENT_INDICATORS.items():
+                if platform_type == target_platform:
+                    for indicator in indicators:
+                        if any(indicator in f for f in files):
+                            return platform_type
 
         return ComputePlatform.UNKNOWN
 
@@ -297,12 +595,45 @@ class EventHandlingPrescriber:
         self.prescriptions = {
             # Kubernetes prescriptions
             (CloudProvider.AWS, ComputePlatform.KUBERNETES): self._eks_prescription,
+            (CloudProvider.AWS, ComputePlatform.KUBERNETES_EKS): self._eks_prescription,
             (CloudProvider.GCP, ComputePlatform.KUBERNETES): self._gke_prescription,
+            (CloudProvider.GCP, ComputePlatform.KUBERNETES_GKE): self._gke_prescription,
+            (CloudProvider.AZURE, ComputePlatform.KUBERNETES_AKS): self._aks_prescription,
             (CloudProvider.UNKNOWN, ComputePlatform.KUBERNETES): self._kubernetes_prescription,
+            (CloudProvider.SCALEWAY, ComputePlatform.KUBERNETES): self._scaleway_k8s_prescription,
+            (CloudProvider.HETZNER, ComputePlatform.KUBERNETES): self._hetzner_k8s_prescription,
+            (CloudProvider.OVHCLOUD, ComputePlatform.KUBERNETES): self._ovh_k8s_prescription,
+            (CloudProvider.EXOSCALE, ComputePlatform.KUBERNETES): self._exoscale_k8s_prescription,
 
             # Serverless prescriptions
             (CloudProvider.AWS, ComputePlatform.SERVERLESS): self._aws_lambda_prescription,
+            (CloudProvider.AWS, ComputePlatform.SERVERLESS_LAMBDA): self._aws_lambda_prescription,
             (CloudProvider.GCP, ComputePlatform.SERVERLESS): self._cloud_run_prescription,
+            (CloudProvider.GCP, ComputePlatform.SERVERLESS_CLOUD_RUN): self._cloud_run_prescription,
+            (CloudProvider.GCP, ComputePlatform.SERVERLESS_CLOUD_FUNCTIONS): self._cloud_functions_prescription,
+
+            # PaaS prescriptions
+            (CloudProvider.HEROKU, ComputePlatform.PAAS_HEROKU): self._heroku_prescription,
+            (CloudProvider.VERCEL, ComputePlatform.PAAS_VERCEL): self._vercel_prescription,
+            (CloudProvider.NETLIFY, ComputePlatform.PAAS_NETLIFY): self._netlify_prescription,
+            (CloudProvider.RAILWAY, ComputePlatform.PAAS_RAILWAY): self._railway_prescription,
+            (CloudProvider.RENDER, ComputePlatform.PAAS_RENDER): self._render_prescription,
+            (CloudProvider.FLY_IO, ComputePlatform.PAAS_FLY_IO): self._fly_io_prescription,
+
+            # VM prescriptions (European clouds)
+            (CloudProvider.SCALEWAY, ComputePlatform.VM): self._scaleway_vm_prescription,
+            (CloudProvider.HETZNER, ComputePlatform.VM): self._hetzner_vm_prescription,
+            (CloudProvider.OVHCLOUD, ComputePlatform.VM): self._ovh_vm_prescription,
+            (CloudProvider.EXOSCALE, ComputePlatform.VM): self._exoscale_vm_prescription,
+            (CloudProvider.IONOS, ComputePlatform.VM): self._ionos_vm_prescription,
+            (CloudProvider.GCORE, ComputePlatform.VM): self._gcore_vm_prescription,
+            (CloudProvider.DIGITAL_OCEAN, ComputePlatform.VM): self._digitalocean_vm_prescription,
+            (CloudProvider.VULTR, ComputePlatform.VM): self._vultr_vm_prescription,
+            (CloudProvider.LINODE, ComputePlatform.VM): self._linode_vm_prescription,
+
+            # Docker Compose
+            (CloudProvider.SELF_HOSTED, ComputePlatform.DOCKER_COMPOSE): self._docker_compose_prescription,
+            (CloudProvider.UNKNOWN, ComputePlatform.DOCKER_COMPOSE): self._docker_compose_prescription,
 
             # Default
             (CloudProvider.UNKNOWN, ComputePlatform.UNKNOWN): self._generic_prescription,
@@ -407,6 +738,26 @@ class EventHandlingPrescriber:
             ]
         )
 
+    def _cloud_functions_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Google Cloud Functions prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Cloud Monitoring",
+            log_source="Cloud Logging",
+            trace_source="Cloud Trace",
+            alert_destination="Cloud Alerting",
+            ingestion_methods=[
+                "Cloud Logging automatic",
+                "Cloud Monitoring metrics"
+            ],
+            required_integrations=[
+                "Cloud Functions logs automatically",
+                "Cloud Monitoring"
+            ],
+            setup_commands=[
+                "gcloud functions deploy <function> --trigger-http --runtime=python39"
+            ]
+        )
+
     def _generic_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
         """Generic prescription when platform unknown"""
         return EventHandlingPrescription(
@@ -424,6 +775,474 @@ class EventHandlingPrescriber:
             ],
             setup_commands=[
                 "Please specify hosting platform for detailed setup"
+            ]
+        )
+
+    # ========== European Cloud Provider Prescriptions ==========
+
+    def _scaleway_k8s_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Scaleway Kubernetes prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus (Scaleway Managed Prometheus)",
+            log_source="Loki or Scaleway Logs",
+            trace_source="Tempo or Grafana Cloud",
+            alert_destination="Alertmanager or Grafana OnCall",
+            ingestion_methods=[
+                "Prometheus scraping via ServiceMonitor",
+                "Fluent Bit for logs to Scaleway Object Storage",
+                "OpenTelemetry Collector for traces"
+            ],
+            required_integrations=[
+                "kube-state-metrics",
+                "cadvisor",
+                "Scaleway Container Registry metrics"
+            ],
+            setup_commands=[
+                "helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack",
+                "kubectl apply -f https://raw.githubusercontent.com/scaleway/fluent-bit/master/compose/k8s/fluent-bit-daemonset.yaml"
+            ]
+        )
+
+    def _scaleway_vm_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Scaleway VM prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus node exporter",
+            log_source="Loki with Vector shipping",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "node_exporter on all instances",
+                "Vector agent for log shipping",
+                "OpenTelemetry Collector"
+            ],
+            required_integrations=[
+                "node_exporter",
+                "cadvisor",
+                "Vector"
+            ],
+            setup_commands=[
+                "scw instance attach <instance-id> --ip <load-balancer-ip>",
+                "curl -L https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz | tar xz"
+            ]
+        )
+
+    def _hetzner_k8s_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Hetzner Kubernetes prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus",
+            log_source="Loki",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "Prometheus via ServiceMonitor",
+                "Fluent Bit DaemonSet to Hetzner Storage Box",
+                "OpenTelemetry Collector"
+            ],
+            required_integrations=[
+                "kube-state-metrics",
+                "cadvisor",
+                "Hetzner Cloud Controller Manager metrics"
+            ],
+            setup_commands=[
+                "helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack",
+                "hcloud volume create --size 10 --name loki-storage --automount"
+            ]
+        )
+
+    def _hetzner_vm_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Hetzner VM prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus node exporter",
+            log_source="Loki",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "node_exporter on all hcloud servers",
+                "Prometheus scraping hcloud metrics",
+                "Fluent Bit for logs"
+            ],
+            required_integrations=[
+                "node_exporter",
+                "hcloud-exporter"
+            ],
+            setup_commands=[
+                "wget https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz",
+                "hcloud server attach-to-network <server-id> --network <metrics-network>"
+            ]
+        )
+
+    def _ovh_k8s_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """OVHcloud Kubernetes prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus (Managed Public Cloud)",
+            log_source="Loki or Graylog",
+            trace_source="Tempo or Jaeger",
+            alert_destination="Alertmanager or Grafana OnCall",
+            ingestion_methods=[
+                "Prometheus via ServiceMonitor",
+                "Fluent Bit for Logs to OVH Object Storage",
+                "OpenTelemetry"
+            ],
+            required_integrations=[
+                "kube-state-metrics",
+                "OVH Metrics"
+            ],
+            setup_commands=[
+                "kubectl apply -f https://raw.githubusercontent.com/ovh/manager/master/kube-prometheus/"
+            ]
+        )
+
+    def _ovh_vm_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """OVHcloud VM prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus node exporter",
+            log_source="Loki with OVH Logs integration",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "node_exporter",
+                "OVH Logs API (vflow or syslog)",
+                "OpenTelemetry"
+            ],
+            required_integrations=[
+                "node_exporter",
+                "OVH Logs agent"
+            ],
+            setup_commands=[
+                "ovh vrack create --name observability",
+                "curl -L https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz | tar xz"
+            ]
+        )
+
+    def _exoscale_k8s_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Exoscale Kubernetes prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus",
+            log_source="Loki or Exoscale POL (Private Object Locker)",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "Prometheus scraping",
+                "Fluent Bit to Exoscale Object Storage",
+                "OpenTelemetry"
+            ],
+            required_integrations=[
+                "kube-state-metrics",
+                "Exoscale container registry metrics"
+            ],
+            setup_commands=[
+                "exo compute instance list",
+                "kubectl apply -f monitoring/"
+            ]
+        )
+
+    def _exoscale_vm_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Exoscale VM prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus node exporter",
+            log_source="Loki",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "node_exporter",
+                "Fluent Bit",
+                "OpenTelemetry Collector"
+            ],
+            required_integrations=[
+                "node_exporter",
+                "Exoscale API metrics via exporter"
+            ],
+            setup_commands=[
+                "exo compute instance create --name <monitoring>"
+            ]
+        )
+
+    def _ionos_vm_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """IONOS VM prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus node exporter",
+            log_source="Loki",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "node_exporter",
+                "Fluent Bit",
+                "OpenTelemetry"
+            ],
+            required_integrations=[
+                "node_exporter",
+                "IONOS API metrics"
+            ],
+            setup_commands=[
+                "ionosctl server create"
+            ]
+        )
+
+    def _gcore_vm_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """G-Core Cloud VM prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus node exporter",
+            log_source="Loki",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "node_exporter",
+                "Fluent Bit",
+                "OpenTelemetry"
+            ],
+            required_integrations=[
+                "node_exporter",
+                "G-Core CDN metrics"
+            ],
+            setup_commands=[
+                "gcore compute instance create"
+            ]
+        )
+
+    def _digitalocean_vm_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """DigitalOcean VM prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus node exporter + DO exporter",
+            log_source="Loki",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "node_exporter + do_exporter",
+                "Fluent Bit",
+                "OpenTelemetry"
+            ],
+            required_integrations=[
+                "node_exporter",
+                "DigitalOcean exporter (do_exporter)"
+            ],
+            setup_commands=[
+                "doctl compute droplet create",
+                "helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack"
+            ]
+        )
+
+    def _vultr_vm_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Vultr VM prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus node exporter + Vultr exporter",
+            log_source="Loki",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "node_exporter + vultr_exporter",
+                "Fluent Bit",
+                "OpenTelemetry"
+            ],
+            required_integrations=[
+                "node_exporter",
+                "Vultr exporter"
+            ],
+            setup_commands=[
+                "vultr-server create",
+                "curl -sSL https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz | tar xz"
+            ]
+        )
+
+    def _linode_vm_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Linode/Akamai VM prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus node exporter + Linode exporter",
+            log_source="Loki",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "node_exporter + linode_exporter",
+                "Fluent Bit",
+                "OpenTelemetry"
+            ],
+            required_integrations=[
+                "node_exporter",
+                "Linode exporter"
+            ],
+            setup_commands=[
+                "linode-cli linodes create",
+                "curl -sSL https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz | tar xz"
+            ]
+        )
+
+    # ========== PaaS Provider Prescriptions ==========
+
+    def _heroku_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Heroku prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Heroku Labs Metrics",
+            log_source="Heroku Logplex ( drains to Loki)",
+            trace_source="Heroku Runtime (via OpenTelemetry)",
+            alert_destination="Heroku Alerts → PagerDuty/Slack",
+            ingestion_methods=[
+                "Heroku Labs metrics endpoint",
+                "Log drain to Loki HTTPS endpoint",
+                "OpenTelemetry SDK for APM"
+            ],
+            required_integrations=[
+                "Heroku Logplex drain",
+                "Heroku dyno metrics"
+            ],
+            setup_commands=[
+                "heroku addons:create heroku-redis -h <app>",
+                "heroku drains:add https://loki.example.com/loki/api/v1/push -h <app>"
+            ]
+        )
+
+    def _vercel_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Vercel prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Vercel Analytics",
+            log_source="Vercel Logs ( drain to Loki)",
+            trace_source="Vercel APM or OpenTelemetry",
+            alert_destination="Vercel Notifications → PagerDuty",
+            ingestion_methods=[
+                "Vercel Analytics dashboard",
+                "Log drain to Loki",
+                "OpenTelemetry instrumentation"
+            ],
+            required_integrations=[
+                "Vercel Log Drain",
+                "Vercel Edge Network metrics"
+            ],
+            setup_commands=[
+                "vercel link integrate --project-id=<project>",
+                "Add log drain in Vercel dashboard"
+            ]
+        )
+
+    def _netlify_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Netlify prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Netlify Analytics",
+            log_source="Netlify Logs ( drain to Loki)",
+            trace_source="Edge Functions APM",
+            alert_destination="Netlify Notifications → Slack",
+            ingestion_methods=[
+                "Netlify Analytics",
+                "Functions log drains",
+                "OpenTelemetry for edge functions"
+            ],
+            required_integrations=[
+                "Netlify Functions logs",
+                "Edge Network metrics"
+            ],
+            setup_commands=[
+                "netlify addons:create analytics",
+                "Configure log drain in netlify.toml"
+            ]
+        )
+
+    def _railway_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Railway prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Railway Metrics",
+            log_source="Railway Logs (structured JSON)",
+            trace_source="OpenTelemetry",
+            alert_destination="Railway Notifications → PagerDuty",
+            ingestion_methods=[
+                "Railway built-in metrics",
+                "Log forwarder to Loki",
+                "OpenTelemetry SDK"
+            ],
+            required_integrations=[
+                "Railway metrics endpoint",
+                "Log forwarding"
+            ],
+            setup_commands=[
+                "railway variables set METRICS_ENDPOINT=<prometheus>",
+                "railway domain"
+            ]
+        )
+
+    def _render_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Render prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Render Metrics",
+            log_source="Render Logs ( drain to Loki)",
+            trace_source="OpenTelemetry",
+            alert_destination="Render Alerts → PagerDuty",
+            ingestion_methods=[
+                "Render dashboard metrics",
+                "Log drain to Loki",
+                "OpenTelemetry SDK"
+            ],
+            required_integrations=[
+                "Render log drains",
+                "Render metrics API"
+            ],
+            setup_commands=[
+                "render env set METRICS_KEY=<key>",
+                "Add log drain in Render dashboard"
+            ]
+        )
+
+    def _fly_io_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Fly.io prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Fly.io Metrics + Prometheus",
+            log_source="Fly.io Logs ( drain to Loki)",
+            trace_source="Fly.io Tracing",
+            alert_destination="Alertmanager → PagerDuty",
+            ingestion_methods=[
+                "flyctl metrics",
+                "Log forwarding to Loki",
+                "OpenTelemetry tracing"
+            ],
+            required_integrations=[
+                "flyctl agent command for metrics",
+                "Log forwarding"
+            ],
+            setup_commands=[
+                "flyctl agent create --region <region>",
+                "fly volumes create loki-data --region <region>"
+            ]
+        )
+
+    # ========== Additional Prescriptions ==========
+
+    def _aks_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Azure AKS prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Azure Monitor Managed Prometheus",
+            log_source="Azure Monitor Logs / Container Insights",
+            trace_source="Azure Application Insights / Grafana Tempo",
+            alert_destination="Azure Monitor Alerts → Action Groups",
+            ingestion_methods=[
+                "Azure Monitor Metrics",
+                "Container Insights for logs",
+                "Azure Monitor Agent for traces"
+            ],
+            required_integrations=[
+                "Azure Monitor metrics addon",
+                "Container Insights"
+            ],
+            setup_commands=[
+                "az aks enable-addons -a monitoring -n <clusterName> -g <resourceGroup>",
+                "az aks update --resource-group <RG> --name <cluster> --enable-azure-monitor-metrics"
+            ]
+        )
+
+    def _docker_compose_prescription(self, analysis: RepositoryAnalysis) -> EventHandlingPrescription:
+        """Docker Compose prescription"""
+        return EventHandlingPrescription(
+            metrics_source="Prometheus",
+            log_source="Loki",
+            trace_source="Tempo",
+            alert_destination="Alertmanager",
+            ingestion_methods=[
+                "Prometheus scraping container metrics",
+                "Fluent Bit container for log aggregation",
+                "OpenTelemetry Collector sidecar"
+            ],
+            required_integrations=[
+                "cAdvisor",
+                "node_exporter (on host)",
+                "Prometheus in docker-compose"
+            ],
+            setup_commands=[
+                "Add Prometheus, Grafana, Loki services to docker-compose.yml",
+                "docker-compose up -d monitoring-stack"
             ]
         )
 
@@ -451,21 +1270,58 @@ class AgentTeamPrescriber:
         responders = ["runbook-executor", "recovery-monitor"]
         optional = []
 
-        # Add environment-specific agents
-        if analysis.compute_platform == ComputePlatform.KUBERNETES:
+        # Kubernetes variants
+        if analysis.compute_platform in [
+            ComputePlatform.KUBERNETES, ComputePlatform.KUBERNETES_EKS,
+            ComputePlatform.KUBERNETES_GKE, ComputePlatform.KUBERNETES_AKS,
+            ComputePlatform.KUBERNETES_SELF, ComputePlatform.KUBERNETES_K3S
+        ]:
             observers.extend(["log-aggregator", "pod-health-monitor"])
             monitors.extend(["anomaly-detector"])
             optional.extend(["kubernetes-specialist", "resource-quotas-tracker"])
 
-        if analysis.compute_platform == ComputePlatform.SERVERLESS:
+        # Serverless variants
+        if analysis.compute_platform in [
+            ComputePlatform.SERVERLESS, ComputePlatform.SERVERLESS_LAMBDA,
+            ComputePlatform.SERVERLESS_CLOUD_RUN, ComputePlatform.SERVERLESS_CLOUD_FUNCTIONS
+        ]:
             observers.extend(["log-aggregator"])
             monitors.extend(["cold-start-monitor", "concurrency-analyzer"])
-            optional.extend(["cost-analyzer"])
-
-        if analysis.cloud_provider in [CloudProvider.AWS, CloudProvider.GCP, CloudProvider.AZURE]:
             optional.append("cost-analyzer")
 
-        # Add framework-specific agents
+        # PaaS variants
+        if analysis.compute_platform in [
+            ComputePlatform.PAAS_HEROKU, ComputePlatform.PAAS_VERCEL,
+            ComputePlatform.PAAS_NETLIFY, ComputePlatform.PAAS_RAILWAY,
+            ComputePlatform.PAAS_RENDER, ComputePlatform.PAAS_FLY_IO
+        ]:
+            monitors.extend(["edge-function-monitor", "deployment-monitor"])
+            optional.append("cost-analyzer")
+
+        # VM variants (including European clouds)
+        if analysis.compute_platform == ComputePlatform.VM:
+            observers.extend(["log-aggregator"])
+            monitors.extend(["host-resource-monitor"])
+            if analysis.cloud_provider not in [CloudProvider.SELF_HOSTED, CloudProvider.ON_PREM]:
+                optional.append("cost-analyzer")
+
+        # Docker Compose
+        if analysis.compute_platform == ComputePlatform.DOCKER_COMPOSE:
+            observers.extend(["log-aggregator"])
+            monitors.extend(["container-health-monitor"])
+            optional.extend(["docker-network-monitor"])
+
+        # Cloud provider cost monitoring
+        if analysis.cloud_provider in [
+            CloudProvider.AWS, CloudProvider.GCP, CloudProvider.AZURE,
+            CloudProvider.SCALEWAY, CloudProvider.DIGITAL_OCEAN,
+            CloudProvider.VULTR, CloudProvider.LINODE, CloudProvider.HEROKU,
+            CloudProvider.RAILWAY, CloudProvider.RENDER, CloudProvider.FLY_IO
+        ]:
+            if "cost-analyzer" not in optional:
+                optional.append("cost-analyzer")
+
+        # Framework-specific agents
         if "django" in analysis.frameworks or "flask" in analysis.frameworks:
             optional.append("python-performance-analyzer")
 
