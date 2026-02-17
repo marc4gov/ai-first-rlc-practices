@@ -105,6 +105,7 @@ class RepositoryAnalysis:
     has_docker: bool
     has_helm: bool
     has_terraform: bool
+    has_wasm: bool = False
     all_files: List[str] = field(default_factory=list)
 
 
@@ -835,6 +836,7 @@ class RepositoryAnalyzer:
             has_docker=self._has_file(all_files, "Dockerfile"),
             has_helm=self._has_file(all_files, "Chart.yaml"),
             has_terraform=self._has_any_extension(all_files, ".tf"),
+            has_wasm=self._detect_wasm(all_files),
             all_files=all_files
         )
 
@@ -1119,6 +1121,42 @@ class RepositoryAnalyzer:
         """Check if any file has the given extension"""
         return any(f.endswith(ext) for f in files)
 
+    def _detect_wasm(self, files: List[str]) -> bool:
+        """Detect WebAssembly usage"""
+        wasm_indicators = [
+            "*.wasm",
+            "*.wat",
+            "wasm-bindgen",
+            "wasm-pack",
+            "Cargo.toml",  # Rust projects can compile to WASM
+        ]
+
+        # Check for WASM files directly
+        if any(f.endswith(".wasm") or f.endswith(".wat") for f in files):
+            return True
+
+        # Check for WASM in Cargo.toml (Rust WASM projects)
+        for file in files:
+            if file == "Cargo.toml":
+                try:
+                    content = (self.repo_path / file).read_text()
+                    if "wasm-bindgen" in content or "wasm-pack" in content or "w32" in content or "wasm" in content.lower():
+                        return True
+                except Exception:
+                    pass
+
+        # Check for package.json with WASM dependencies
+        for file in files:
+            if file == "package.json":
+                try:
+                    content = (self.repo_path / file).read_text()
+                    if "wasm" in content.lower() or "vite-plugin-wasm" in content:
+                        return True
+                except Exception:
+                    pass
+
+        return False
+
 
 class EventHandlingRecommender:
     """Opinionated event handling recommender based on codebase analysis"""
@@ -1236,6 +1274,17 @@ class EventHandlingRecommender:
             recommendation = "balanced"
             reasons.append("PaaS platform pairs well with managed observability")
 
+        # WASM-specific adjustments
+        if analysis.has_wasm:
+            # WASM on edge platforms often has built-in metrics
+            if provider in [CloudProvider.VERCEL, CloudProvider.NETLIFY, CloudProvider.GCP]:
+                recommendation = "balanced"
+                reasons.append("WASM on edge: leverage platform's built-in observability")
+            else:
+                # Self-hosted WASM needs more instrumentation
+                if recommendation == "budget":
+                    reasons.append("WASM: self-hosted requires careful host-side instrumentation")
+
         self.recommendation_reasons = reasons
         return recommendation
 
@@ -1269,6 +1318,14 @@ class EventHandlingRecommender:
                 "Prometheus client_golang for metrics"
             ])
 
+        if "rust" in languages:
+            advice.extend([
+                "Use OpenTelemetry Rust with opentelemetry-rust SDK",
+                "Consider tracing for span-based instrumentation (Rust best practice)",
+                "Prometheus client for metrics: prometheus-client or metrics-rs",
+                "For WASM: Use wasm-bindgen with console.log bridging to host observability"
+            ])
+
         # Framework-specific advice
         if "django" in frameworks:
             advice.append("Django: django-prometheus for /metrics endpoint")
@@ -1278,6 +1335,15 @@ class EventHandlingRecommender:
 
         if "next" in frameworks:
             advice.append("Next.js: Built-in instrumentation via Vercel Analytics")
+
+        # WASM-specific advice
+        if analysis.has_wasm:
+            advice.extend([
+                "WASM: Instrument before compilation (host-side metrics more reliable)",
+                "WASM: Use web-sys or stdweb to bridge console to host logging",
+                "WASM: Consider module-level metrics exported to host",
+                "WASM: Edge computing platforms (Cloudflare Workers, Fastly Compute@Edge) have built-in metrics"
+            ])
 
         # Platform-specific advice
         if platform in [ComputePlatform.KUBERNETES, ComputePlatform.KUBERNETES_EKS,
@@ -3806,6 +3872,8 @@ def main():
     print(f"  Languages: {', '.join([l.value for l in analysis.languages])}")
     print(f"  Frameworks: {', '.join(analysis.frameworks) if analysis.frameworks else 'None detected'}")
     print(f"  Deployment: {', '.join(analysis.deployment_configs) if analysis.deployment_configs else 'None detected'}")
+    if analysis.has_wasm:
+        print(f"  WASM: detected ✨")
     print(f"  Cloud Provider: {analysis.cloud_provider.value}")
     print(f"  Compute Platform: {analysis.compute_platform.value}")
     print()
