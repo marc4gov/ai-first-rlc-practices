@@ -1529,7 +1529,7 @@ class EventHandlingPrescriber:
 
     def _create_option(self, tier: str, name: str, provider: str,
                        metrics: str, logs: str, traces: str, alerts: str,
-                       ingestion: List[str], integrations: List[str], commands: List[str],
+                       ingestion_methods: List[str], integrations: List[str], commands: List[str],
                        cost: str, complexity: str, pros: List[str], cons: List[str], best_for: List[str]) -> EventHandlingOption:
         """Helper to create an EventHandlingOption"""
         return EventHandlingOption(
@@ -1539,7 +1539,7 @@ class EventHandlingPrescriber:
             log_source=logs,
             trace_source=traces,
             alert_destination=alerts,
-            ingestion_methods=ingestion,
+            ingestion_methods=ingestion_methods,
             required_integrations=integrations,
             setup_commands=commands,
             estimated_monthly_cost=cost,
@@ -2128,7 +2128,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Heroku Logs + Free Metrics",
+                tier="budget", name="Heroku Logs + Free Metrics", provider="heroku",
                 metrics="Heroku Metrics (free tier)",
                 logs="Heroku Logplex ( drains to self-hosted Loki)",
                 traces="Basic APM (self-instrumented)",
@@ -2143,7 +2143,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED - Papertrail
             self._create_option(
-                tier="balanced", name="Heroku + Papertrail/Loki",
+                tier="balanced", name="Heroku + Papertrail/Loki", provider="heroku",
                 metrics="Heroku Metrics + Librato/New Relic Basic",
                 logs="Papertrail or self-hosted Loki",
                 traces="APM Basic",
@@ -2158,7 +2158,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM - Heroku + Datadog
             self._create_option(
-                tier="premium", name="Heroku + Datadog",
+                tier="premium", name="Heroku + Datadog", provider="heroku",
                 metrics="Datadog",
                 logs="Datadog Logs (via drain or APM)",
                 traces="Datadog APM",
@@ -2178,7 +2178,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET - Vercel native
             self._create_option(
-                tier="budget", name="Vercel Analytics + Log Drains",
+                tier="budget", name="Vercel Analytics + Log Drains", provider="vercel",
                 metrics="Vercel Analytics (free tier)",
                 logs="Vercel Logs → self-hosted Loki",
                 traces="OpenTelemetry (self-instrumented)",
@@ -2193,7 +2193,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED - Vercel + Grafana Cloud
             self._create_option(
-                tier="balanced", name="Vercel + Grafana Cloud",
+                tier="balanced", name="Vercel + Grafana Cloud", provider="vercel",
                 metrics="Vercel Analytics + Grafana Cloud",
                 logs="Grafana Cloud Loki (via drain)",
                 traces="Grafana Cloud Tempo",
@@ -2208,7 +2208,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM - Vercel + Datadog
             self._create_option(
-                tier="premium", name="Vercel + Datadog",
+                tier="premium", name="Vercel + Datadog", provider="vercel",
                 metrics="Datadog + Vercel Analytics",
                 logs="Datadog Logs",
                 traces="Datadog RUM + APM",
@@ -2228,7 +2228,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Netlify Functions + Self-Hosted Logs",
+                tier="budget", name="Netlify Functions + Self-Hosted Logs", provider="netlify",
                 metrics="Netlify Analytics (free)",
                 logs="Netlify Logs → self-hosted Loki",
                 traces="APM self-instrumented",
@@ -2242,7 +2242,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED
             self._create_option(
-                tier="balanced", name="Netlify + Grafana Cloud",
+                tier="balanced", name="Netlify + Grafana Cloud", provider="netlify",
                 metrics="Netlify Analytics + Grafana",
                 logs="Grafana Cloud Loki (via drain)",
                 traces="Grafana Cloud Tempo",
@@ -2256,7 +2256,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM
             self._create_option(
-                tier="premium", name="Netlify + Datadog",
+                tier="premium", name="Netlify + Datadog", provider="netlify",
                 metrics="Datadog",
                 logs="Datadog Logs",
                 traces="Datadog RUM",
@@ -2275,7 +2275,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Railway Metrics + Self-Hosted Logs",
+                tier="budget", name="Railway Metrics + Self-Hosted Logs", provider="railway",
                 metrics="Railway built-in metrics",
                 logs="Self-hosted Loki",
                 traces="OpenTelemetry",
@@ -2289,7 +2289,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED
             self._create_option(
-                tier="balanced", name="Railway + Grafana Cloud",
+                tier="balanced", name="Railway + Grafana Cloud", provider="railway",
                 metrics="Railway Metrics + Grafana",
                 logs="Grafana Cloud Loki",
                 traces="Grafana Cloud Tempo",
@@ -2303,7 +2303,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM
             self._create_option(
-                tier="premium", name="Railway + Datadog",
+                tier="premium", name="Railway + Datadog", provider="railway",
                 metrics="Datadog",
                 logs="Datadog Logs",
                 traces="Datadog APM",
@@ -2325,7 +2325,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET - Fly native
             self._create_option(
-                tier="budget", name="Fly.io Metrics + Self-Hosted Logs",
+                tier="budget", name="Fly.io Metrics + Self-Hosted Logs", provider="fly_io",
                 metrics="flyctl metrics",
                 logs="Self-hosted Loki (on Fly.io volume)",
                 traces="OTel basic",
@@ -2339,7 +2339,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED - Fly + Grafana
             self._create_option(
-                tier="balanced", name="Fly.io + Grafana Cloud",
+                tier="balanced", name="Fly.io + Grafana Cloud", provider="fly_io",
                 metrics="flyctl metrics + Grafana",
                 logs="Grafana Cloud Loki",
                 traces="Grafana Cloud Tempo",
@@ -2352,7 +2352,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM
             self._create_option(
-                tier="premium", name="Fly.io + Datadog",
+                tier="premium", name="Fly.io + Datadog", provider="fly_io",
                 metrics="Datadog",
                 logs="Datadog Logs",
                 traces="Datadog APM",
@@ -2372,7 +2372,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET - All self-hosted on Hetzner
             self._create_option(
-                tier="budget", name="Self-Hosted LGTM on Hetzner VM",
+                tier="budget", name="Self-Hosted LGTM on Hetzner VM", provider="hetzner",
                 metrics="Prometheus (on CX21 ~€4/mo)",
                 logs="Loki (same VM, Storage Box free)",
                 traces="Tempo (same VM)",
@@ -2387,7 +2387,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED - Hetzner VMs + Grafana Cloud
             self._create_option(
-                tier="balanced", name="Hetzner Compute + Grafana Cloud",
+                tier="balanced", name="Hetzner Compute + Grafana Cloud", provider="hetzner",
                 metrics="Grafana Cloud Mimir (EU region)",
                 logs="Grafana Cloud Loki (EU)",
                 traces="Grafana Cloud Tempo (EU)",
@@ -2402,7 +2402,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM - Hetzner + Datadog EU
             self._create_option(
-                tier="premium", name="Hetzner + Datadog EU",
+                tier="premium", name="Hetzner + Datadog EU", provider="hetzner",
                 metrics="Datadog (EU region)",
                 logs="Datadog Logs (EU)",
                 traces="Datadog APM (EU)",
@@ -2421,7 +2421,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Self-Hosted on Scaleway",
+                tier="budget", name="Self-Hosted on Scaleway", provider="scaleway",
                 metrics="Prometheus (on DEV1-S ~€8/mo)",
                 logs="Loki (to Object Storage)",
                 traces="Tempo (to Object Storage)",
@@ -2435,7 +2435,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED
             self._create_option(
-                tier="balanced", name="Scaleway + Grafana Cloud EU",
+                tier="balanced", name="Scaleway + Grafana Cloud EU", provider="scaleway",
                 metrics="Grafana Cloud",
                 logs="Grafana Cloud",
                 traces="Grafana Cloud",
@@ -2463,7 +2463,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Self-Hosted LGTM on OVHcloud",
+                tier="budget", name="Self-Hosted LGTM on OVHcloud", provider="ovhcloud",
                 metrics="Prometheus (on Public Cloud instance)",
                 logs="Loki (to OVH Object Storage)",
                 traces="Tempo (to OVH Object Storage)",
@@ -2477,7 +2477,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED
             self._create_option(
-                tier="balanced", name="OVHcloud + Grafana Cloud",
+                tier="balanced", name="OVHcloud + Grafana Cloud", provider="ovhcloud",
                 metrics="Grafana Cloud",
                 logs="Grafana Cloud",
                 traces="Grafana Cloud",
@@ -2488,7 +2488,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM
             self._create_option(
-                tier="premium", name="OVHcloud + Datadog",
+                tier="premium", name="OVHcloud + Datadog", provider="ovhcloud",
                 metrics="Datadog",
                 logs="Datadog",
                 traces="Datadog APM",
@@ -2503,7 +2503,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Self-Hosted LGTM",
+                tier="budget", name="Self-Hosted LGTM", provider="exoscale",
                 metrics="Prometheus",
                 logs="Loki (to Exoscale POL)",
                 traces="Tempo (to POL)",
@@ -2514,7 +2514,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED
             self._create_option(
-                tier="balanced", name="Exoscale + Grafana Cloud",
+                tier="balanced", name="Exoscale + Grafana Cloud", provider="exoscale",
                 metrics="Grafana Cloud",
                 logs="Grafana Cloud",
                 traces="Grafana Cloud",
@@ -2524,7 +2524,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM
             self._create_option(
-                tier="premium", name="Exoscale + Datadog",
+                tier="premium", name="Exoscale + Datadog", provider="exoscale",
                 metrics="Datadog",
                 logs="Datadog",
                 traces="Datadog APM",
@@ -2538,7 +2538,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Self-Hosted LGTM",
+                tier="budget", name="Self-Hosted LGTM", provider="ionos",
                 metrics="Prometheus",
                 logs="Loki",
                 traces="Tempo",
@@ -2547,7 +2547,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED
             self._create_option(
-                tier="balanced", name="IONOS + Grafana Cloud",
+                tier="balanced", name="IONOS + Grafana Cloud", provider="ionos",
                 metrics="Grafana Cloud",
                 logs="Grafana Cloud",
                 traces="Grafana Cloud",
@@ -2556,7 +2556,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM
             self._create_option(
-                tier="premium", name="IONOS + Datadog",
+                tier="premium", name="IONOS + Datadog", provider="ionos",
                 metrics="Datadog",
                 logs="Datadog",
                 traces="Datadog APM",
@@ -2570,7 +2570,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Self-Hosted LGTM on DO",
+                tier="budget", name="Self-Hosted LGTM on DO", provider="digitalocean",
                 metrics="Prometheus + do_exporter",
                 logs="Loki (to DO Spaces)",
                 traces="Tempo (to DO Spaces)",
@@ -2581,7 +2581,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED
             self._create_option(
-                tier="balanced", name="DigitalOcean + Grafana Cloud",
+                tier="balanced", name="DigitalOcean + Grafana Cloud", provider="digitalocean",
                 metrics="Grafana Cloud",
                 logs="Grafana Cloud",
                 traces="Grafana Cloud",
@@ -2591,7 +2591,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM
             self._create_option(
-                tier="premium", name="DigitalOcean + Datadog",
+                tier="premium", name="DigitalOcean + Datadog", provider="digitalocean",
                 metrics="Datadog",
                 logs="Datadog",
                 traces="Datadog APM",
@@ -2605,7 +2605,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Self-Hosted LGTM on Vultr",
+                tier="budget", name="Self-Hosted LGTM on Vultr", provider="vultr",
                 metrics="Prometheus + vultr_exporter",
                 logs="Loki (to Vultr Object Storage)",
                 traces="Tempo (to Object Storage)",
@@ -2615,7 +2615,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED
             self._create_option(
-                tier="balanced", name="Vultr + Grafana Cloud",
+                tier="balanced", name="Vultr + Grafana Cloud", provider="vultr",
                 metrics="Grafana Cloud",
                 logs="Grafana Cloud",
                 traces="Grafana Cloud",
@@ -2624,7 +2624,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM
             self._create_option(
-                tier="premium", name="Vultr + Datadog",
+                tier="premium", name="Vultr + Datadog", provider="vultr",
                 metrics="Datadog",
                 logs="Datadog",
                 traces="Datadog APM",
@@ -2638,7 +2638,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Self-Hosted LGTM on Linode",
+                tier="budget", name="Self-Hosted LGTM on Linode", provider="linode",
                 metrics="Prometheus + linode_exporter",
                 logs="Loki (to Linode Object Storage)",
                 traces="Tempo (to Object Storage)",
@@ -2648,7 +2648,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED
             self._create_option(
-                tier="balanced", name="Linode + Grafana Cloud",
+                tier="balanced", name="Linode + Grafana Cloud", provider="linode",
                 metrics="Grafana Cloud",
                 logs="Grafana Cloud",
                 traces="Grafana Cloud",
@@ -2657,7 +2657,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM
             self._create_option(
-                tier="premium", name="Linode + Datadog",
+                tier="premium", name="Linode + Datadog", provider="linode",
                 metrics="Datadog",
                 logs="Datadog",
                 traces="Datadog APM",
@@ -2673,7 +2673,7 @@ class EventHandlingPrescriber:
         return [
             # BUDGET
             self._create_option(
-                tier="budget", name="Self-Hosted LGTM in Compose",
+                tier="budget", name="Self-Hosted LGTM in Compose", provider="docker",
                 metrics="Prometheus (container)",
                 logs="Loki (container, local volume)",
                 traces="Tempo (container, local volume)",
@@ -2688,7 +2688,7 @@ class EventHandlingPrescriber:
             ),
             # BALANCED
             self._create_option(
-                tier="balanced", name="Docker Compose + Object Storage",
+                tier="balanced", name="Docker Compose + Object Storage", provider="docker",
                 metrics="Prometheus (container)",
                 logs="Loki (container, logs to S3/MinIO)",
                 traces="Tempo (container, traces to S3/MinIO)",
@@ -2703,7 +2703,7 @@ class EventHandlingPrescriber:
             ),
             # PREMIUM
             self._create_option(
-                tier="premium", name="Grafana Cloud + Docker Compose",
+                tier="premium", name="Grafana Cloud + Docker Compose", provider="docker",
                 metrics="Grafana Cloud",
                 logs="Grafana Cloud",
                 traces="Grafana Cloud",
@@ -2725,7 +2725,7 @@ class EventHandlingPrescriber:
             self._create_option(
                 tier="budget", name="Self-Hosted LGTM Stack", provider="generic",
                 metrics="Prometheus", logs="Loki", traces="Tempo", alerts="Alertmanager",
-                ingestion=["Prometheus scraping", "Fluent Bit", "OTel"],
+                ingestion_methods=["Prometheus scraping", "Fluent Bit", "OTel"],
                 integrations=["node_exporter", "app instrumentation"],
                 commands=["docker compose -f monitoring-stack.yml up -d"],
                 cost="<$50", complexity="High",
@@ -2737,7 +2737,7 @@ class EventHandlingPrescriber:
             self._create_option(
                 tier="balanced", name="Grafana Cloud", provider="generic",
                 metrics="Grafana Cloud", logs="Grafana Cloud", traces="Grafana Cloud", alerts="Grafana OnCall",
-                ingestion=["Grafana Agent", "Grafana Alloy"],
+                ingestion_methods=["Grafana Agent", "Grafana Alloy"],
                 integrations=["App instrumentation"],
                 commands=["Install Grafana Agent", "Connect to Grafana Cloud"],
                 cost="$50-150", complexity="Low",
@@ -2749,7 +2749,7 @@ class EventHandlingPrescriber:
             self._create_option(
                 tier="premium", name="Datadog or New Relic", provider="generic",
                 metrics="Datadog/New Relic", logs="Datadog/New Relic", traces="Datadog/New Relic APM", alerts="Datadog/New Relic",
-                ingestion=["Agent installation"],
+                ingestion_methods=["Agent installation"],
                 integrations=["Full cloud integrations"],
                 commands=["Install agent", "Configure dashboards"],
                 cost="$200-1000", complexity="Low",
